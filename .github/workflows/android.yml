@@ -29,9 +29,11 @@ jobs:
       - name: Build web app
         env:
           # Add these under Settings > Secrets and variables > Actions.
-          # Leave them out and the APK runs in on-device demo mode.
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # Optional if the values are in src/firebase-config.ts. With neither, the APK runs in demo mode.
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_PUBLIC_URL: ${{ vars.VITE_PUBLIC_URL }}
         run: npm run build
 

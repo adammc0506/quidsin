@@ -1,5 +1,16 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Expense, Group, Share } from "./money";
+import { initializeApp } from "firebase/app";
+import {
+  arrayUnion,
+  doc,
+  getDoc,
+  getFirestore,
+  onSnapshot,
+  runTransaction,
+  updateDoc,
+  type Firestore,
+} from "firebase/firestore";
+import { firebaseConfig, firebaseConfigured } from "../firebase-config";
+import type { Expense, Group, Member, Settlement, Share } from "./money";
 import { generateReference } from "./reference";
 
 export interface NewExpense {
@@ -11,10 +22,12 @@ export interface NewExpense {
 }
 
 export interface Store {
-  /** "supabase" = shared online; "demo" = this device only. */
-  mode: "supabase" | "demo";
+  /** "cloud" = shared online; "demo" = this device only. */
+  mode: "cloud" | "demo";
   createGroup(name: string, memberNames: string[]): Promise<string>;
   getGroup(reference: string): Promise<Group | null>;
+  /** Live updates where the backend supports them. Returns an unsubscribe function. */
+  subscribe?(reference: string, onChange: (g: Group | null) => void, onError: (e: Error) => void): () => void;
   addMember(reference: string, name: string): Promise<void>;
   addExpense(reference: string, expense: NewExpense): Promise<void>;
   deleteExpense(reference: string, expenseId: string): Promise<void>;
@@ -24,44 +37,84 @@ export interface Store {
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
-// ---------- Supabase (production) ----------
-// Every call goes through a SECURITY DEFINER function that takes the reference.
-// Tables themselves are closed to the public, so the reference acts as the key.
-class SupabaseStore implements Store {
-  mode = "supabase" as const;
-  private db: SupabaseClient;
-  constructor(url: string, anonKey: string) {
-    this.db = createClient(url, anonKey, { auth: { persistSession: false } });
+/** Newest first, the way the app shows them. */
+function tidy(g: Group): Group {
+  return {
+    ...g,
+    expenses: [...(g.expenses ?? [])].sort((a, b) => b.spentOn.localeCompare(a.spentOn) || b.createdAt.localeCompare(a.createdAt)),
+    settlements: [...(g.settlements ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  };
+}
+
+// ---------- Firebase Firestore (production) ----------
+// One document per group at groups/{reference}. Security rules allow reading a
+// group only by its exact reference (no listing), so the reference is the key.
+class FirebaseStore implements Store {
+  mode = "cloud" as const;
+  private db: Firestore;
+  constructor() {
+    this.db = getFirestore(initializeApp(firebaseConfig));
   }
-  private async rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
-    const { data, error } = await this.db.rpc(fn, args);
-    if (error) throw new Error(error.message);
-    return data as T;
+  private ref(reference: string) {
+    return doc(this.db, "groups", reference);
   }
-  createGroup(name: string, memberNames: string[]) {
-    return this.rpc<string>("qi_create_group", { p_name: name, p_members: memberNames });
+  async createGroup(name: string, memberNames: string[]) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const reference = generateReference();
+      const created = await runTransaction(this.db, async (tx) => {
+        const snap = await tx.get(this.ref(reference));
+        if (snap.exists()) return false;
+        const group: Group = {
+          reference,
+          name,
+          currency: "GBP",
+          members: memberNames.map((n) => ({ id: uid(), name: n })),
+          expenses: [],
+          settlements: [],
+          createdAt: now(),
+        };
+        tx.set(this.ref(reference), group);
+        return true;
+      });
+      if (created) return reference;
+    }
+    throw new Error("Couldn't create a unique reference. Please try again.");
   }
   async getGroup(reference: string) {
-    return (await this.rpc<Group | null>("qi_get_group", { p_ref: reference })) ?? null;
+    const snap = await getDoc(this.ref(reference));
+    return snap.exists() ? tidy(snap.data() as Group) : null;
+  }
+  subscribe(reference: string, onChange: (g: Group | null) => void, onError: (e: Error) => void) {
+    return onSnapshot(
+      this.ref(reference),
+      (snap) => {
+        // An empty answer from the local cache isn't proof the group doesn't
+        // exist: wait for the server before saying "not found".
+        if (!snap.exists() && snap.metadata.fromCache) return;
+        onChange(snap.exists() ? tidy(snap.data() as Group) : null);
+      },
+      (err) => onError(err),
+    );
   }
   async addMember(reference: string, name: string) {
-    await this.rpc("qi_add_member", { p_ref: reference, p_name: name });
+    const member: Member = { id: uid(), name };
+    await updateDoc(this.ref(reference), { members: arrayUnion(member) });
   }
   async addExpense(reference: string, e: NewExpense) {
-    await this.rpc("qi_add_expense", {
-      p_ref: reference,
-      p_description: e.description,
-      p_amount_pence: e.amountPence,
-      p_paid_by: e.paidBy,
-      p_spent_on: e.spentOn,
-      p_shares: e.shares,
-    });
+    const expense: Expense = { ...e, id: uid(), createdAt: now() };
+    await updateDoc(this.ref(reference), { expenses: arrayUnion(expense) });
   }
   async deleteExpense(reference: string, expenseId: string) {
-    await this.rpc("qi_delete_expense", { p_ref: reference, p_expense_id: expenseId });
+    await runTransaction(this.db, async (tx) => {
+      const snap = await tx.get(this.ref(reference));
+      if (!snap.exists()) throw new Error("Group not found");
+      const expenses = (snap.data() as Group).expenses.filter((x) => x.id !== expenseId);
+      tx.update(this.ref(reference), { expenses });
+    });
   }
   async addSettlement(reference: string, from: string, to: string, amountPence: number) {
-    await this.rpc("qi_add_settlement", { p_ref: reference, p_from: from, p_to: to, p_amount_pence: amountPence });
+    const s: Settlement = { id: uid(), from, to, amountPence, createdAt: now() };
+    await updateDoc(this.ref(reference), { settlements: arrayUnion(s) });
   }
 }
 
@@ -126,10 +179,7 @@ class DemoStore implements Store {
   }
 }
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-
-export const store: Store = url && key ? new SupabaseStore(url, key) : new DemoStore();
+export const store: Store = firebaseConfigured ? new FirebaseStore() : new DemoStore();
 
 // ---------- "My groups" list kept on this device ----------
 export interface RecentGroup {

@@ -1,0 +1,30 @@
+rules_version = '2';
+// QuidsIn: each group is one document at groups/{reference}.
+// Anyone who knows a reference can read and add to that group; nobody can
+// list groups, so references can't be discovered.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /groups/{ref} {
+      function validRef() {
+        return ref.matches('^QI-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$');
+      }
+      function validGroup(d) {
+        return d.keys().hasOnly(['reference', 'name', 'currency', 'createdAt', 'members', 'expenses', 'settlements'])
+          && d.reference == ref
+          && d.name is string && d.name.size() > 0 && d.name.size() <= 80
+          && d.currency is string
+          && d.members is list && d.members.size() >= 2 && d.members.size() <= 50
+          && d.expenses is list && d.expenses.size() <= 2000
+          && d.settlements is list && d.settlements.size() <= 1000;
+      }
+
+      allow get: if validRef();
+      allow list: if false;
+      allow create: if validRef() && validGroup(request.resource.data);
+      allow update: if validGroup(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.members.size() >= resource.data.members.size();
+      allow delete: if false;
+    }
+  }
+}

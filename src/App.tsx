@@ -162,7 +162,7 @@ function Home() {
 
       {store.mode === "demo" && (
         <p className="muted small center">
-          Demo mode: groups are saved on this device only. Add your Supabase keys to share groups between phones.
+          Demo mode: groups are saved on this device only. Add your Firebase settings to share groups between phones.
         </p>
       )}
     </div>
@@ -227,6 +227,7 @@ function GroupScreen({ reference, sub }: { reference: string; sub?: string }) {
   const [me, setMeState] = useState<string | null>(() => getMe(reference));
 
   const load = useCallback(async () => {
+    if (store.subscribe) return; // live updates already keep the group fresh
     try {
       const g = await store.getGroup(reference);
       setGroup(g);
@@ -237,16 +238,19 @@ function GroupScreen({ reference, sub }: { reference: string; sub?: string }) {
   }, [reference]);
 
   useEffect(() => {
+    if (store.subscribe) {
+      // Live updates: everyone in the group sees changes straight away.
+      return store.subscribe(
+        reference,
+        (g) => {
+          setGroup(g);
+          if (g) rememberGroup({ reference: g.reference, name: g.name });
+        },
+        (e) => setError(e.message),
+      );
+    }
     load();
-    if (store.mode !== "supabase") return;
-    const t = setInterval(() => document.visibilityState === "visible" && load(), 15000);
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      clearInterval(t);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [load]);
+  }, [load, reference]);
 
   if (error) return <p className="error">Couldn't load this group: {error}</p>;
   if (group === undefined) return <p className="muted center">Loading…</p>;
