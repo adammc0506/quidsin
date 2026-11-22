@@ -171,7 +171,8 @@ function Home() {
       {isWebHost && (
         <p className="small muted family">
           QuidsIn is a free <a href="/">Tab &amp; Tally</a> tool. Groups are deleted after 30 days, or 3 months if you
-          choose.
+          choose.{" "}
+          <a href="/about/">About</a>, <a href="/privacy/">Privacy</a> and <a href="/contact/">Contact</a>.
         </p>
       )}
 

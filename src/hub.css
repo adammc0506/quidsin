@@ -83,3 +83,16 @@ a.item .name { text-decoration: underline; text-decoration-color: var(--amber); 
   background: #4b2e83; color: #fff; font-weight: 620; font-size: 0.9rem;
 }
 a.item:hover .open { background: #3a2366; }
+
+/* ---------- plain pages: privacy, about, contact ---------- */
+.receipt-nav { display: flex; gap: 18px; padding-top: 4px; font-weight: 620; font-size: 0.9rem; }
+.receipt-nav a { text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.doc { width: 100%; max-width: 640px; background: var(--paper); padding: 28px 24px 32px; border-radius: 4px; display: flex; flex-direction: column; gap: 12px; }
+.doc-brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--serif); font-size: 1.15rem; align-self: flex-start; padding-bottom: 10px; }
+.doc h1 { font-size: 2rem; }
+.doc h2 { font-family: var(--serif); font-weight: 400; font-size: 1.2rem; margin-top: 14px; }
+.doc p, .doc li { max-width: 62ch; }
+.doc ul { list-style: disc; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.doc a:not(.doc-brand) { color: #4b2e83; font-weight: 560; text-underline-offset: 3px; text-decoration: underline; }
+.doc .meta { color: var(--muted); font-size: 0.88rem; }
+.doc-nav { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 22px; padding-top: 16px; border-top: 2px dashed var(--rule); font-size: 0.92rem; font-weight: 620; }
