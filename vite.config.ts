@@ -1,8 +1,18 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// base "./" so the same build works on the web and inside the Android app.
+// The website: Tab & Tally hub at "/" and the QuidsIn app at "/quidsin/".
+// Each tool is its own page; the Android app uses vite.app.config.ts instead.
 export default defineConfig({
-  base: "./",
+  base: "/",
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      input: {
+        hub: resolve(import.meta.dirname, "index.html"),
+        quidsin: resolve(import.meta.dirname, "quidsin/index.html"),
+      },
+    },
+  },
 });

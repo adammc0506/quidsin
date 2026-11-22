@@ -69,8 +69,8 @@ jobs:
       - name: Build web app for Android
         env:
           VITE_API_URL: ${{ steps.deploy.outputs.url }}
-          VITE_PUBLIC_URL: ${{ steps.deploy.outputs.url }}
-        run: npm run build
+          VITE_PUBLIC_URL: ${{ steps.deploy.outputs.url && format('{0}/quidsin', steps.deploy.outputs.url) || '' }}
+        run: npm run build:app
 
       - name: Build APK
         run: |

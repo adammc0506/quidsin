@@ -12,7 +12,10 @@ export interface NewExpense {
 export interface Store {
   /** "cloud" = shared online; "demo" = this device only. */
   mode: "cloud" | "demo";
-  createGroup(name: string, memberNames: string[]): Promise<string>;
+  /** keepDays: 30 (default) or 90. Groups are deleted automatically after that. */
+  createGroup(name: string, memberNames: string[], keepDays?: 30 | 90): Promise<string>;
+  /** One "keep another month" extension, up to 3 months in total. */
+  extendGroup(reference: string): Promise<void>;
   getGroup(reference: string): Promise<Group | null>;
   /** Keeps a group fresh where the backend supports it. Returns an unsubscribe function. */
   subscribe?(reference: string, onChange: (g: Group | null) => void, onError: (e: Error) => void): () => void;
@@ -62,18 +65,24 @@ class ApiStore implements Store {
     return `/groups/${encodeURIComponent(reference)}`;
   }
 
-  async createGroup(name: string, memberNames: string[]) {
+  async createGroup(name: string, memberNames: string[], keepDays: 30 | 90 = 30) {
     const { reference } = await this.call<{ reference: string }>("/groups", {
       method: "POST",
-      body: JSON.stringify({ name, members: memberNames }),
+      body: JSON.stringify({ name, members: memberNames, retentionDays: keepDays }),
     });
     return reference;
+  }
+  async extendGroup(reference: string) {
+    await this.post(`${this.g(reference)}/extend`, {});
+    this.changed(reference);
   }
   async getGroup(reference: string) {
     try {
       return await this.call<Group>(this.g(reference));
     } catch (e) {
-      if ((e as { status?: number }).status === 404) return null;
+      // 404 = no such group, 410 = it expired and was deleted.
+      const status = (e as { status?: number }).status;
+      if (status === 404 || status === 410) return null;
       throw e;
     }
   }
@@ -156,6 +165,9 @@ class DemoStore implements Store {
     if (!g) throw new Error("Group not found");
     fn(g);
     this.save(g);
+  }
+  async extendGroup() {
+    /* demo groups stay on this device and never expire */
   }
   async createGroup(name: string, memberNames: string[]) {
     const reference = generateReference();

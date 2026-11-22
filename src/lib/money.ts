@@ -36,6 +36,10 @@ export interface Group {
   expenses: Expense[];
   settlements: Settlement[];
   createdAt: string;
+  /** When the group is deleted (cloud only). */
+  expiresAt?: string | null;
+  /** True while a "keep another month" extension is still allowed. */
+  canExtend?: boolean;
 }
 
 export interface Transfer {

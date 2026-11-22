@@ -2,6 +2,8 @@
 // The Worker also serves the web app from ./dist (static assets, free).
 // Every group endpoint needs the group's reference, which acts as its key.
 
+import { expiryFor, extend, isExpired, parseRetention } from "./retention";
+
 interface Env {
   DB: D1Database;
 }
@@ -63,9 +65,17 @@ async function body(req: Request): Promise<Record<string, unknown>> {
   throw new HttpError(400, "Invalid JSON body");
 }
 
+function assertLive(expiresAt: string | null) {
+  if (isExpired(expiresAt ? Date.parse(expiresAt) : null, Date.now()))
+    throw new HttpError(410, "This group has expired and been deleted");
+}
+
 async function groupId(env: Env, ref: string): Promise<string> {
-  const row = await env.DB.prepare("SELECT id FROM groups WHERE reference = ?").bind(ref).first<{ id: string }>();
+  const row = await env.DB.prepare("SELECT id, expires_at FROM groups WHERE reference = ?")
+    .bind(ref)
+    .first<{ id: string; expires_at: string | null }>();
   if (!row) throw new HttpError(404, "Group not found");
+  assertLive(row.expires_at);
   return row.id;
 }
 
@@ -85,18 +95,19 @@ async function createGroup(env: Env, req: Request) {
   if (new Set(members.map((m) => m.toLowerCase())).size !== members.length)
     throw new HttpError(400, "Each person needs a different name");
 
+  const retention = parseRetention(b.retentionDays);
+  if (!retention) throw new HttpError(400, "Groups can be kept for 30 or 90 days");
+
   const gid = uid();
   const created = now();
+  const expires = new Date(expiryFor(Date.parse(created), retention)).toISOString();
   for (let attempt = 0; attempt < 5; attempt++) {
     const reference = newReference();
     try {
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO groups (id, reference, name, currency, created_at) VALUES (?, ?, ?, 'GBP', ?)").bind(
-          gid,
-          reference,
-          name,
-          created,
-        ),
+        env.DB.prepare(
+          "INSERT INTO groups (id, reference, name, currency, created_at, expires_at) VALUES (?, ?, ?, 'GBP', ?, ?)",
+        ).bind(gid, reference, name, created, expires),
         ...members.map((m, i) =>
           env.DB.prepare("INSERT INTO members (id, group_id, name, position, created_at) VALUES (?, ?, ?, ?, ?)").bind(
             uid(),
@@ -116,10 +127,21 @@ async function createGroup(env: Env, req: Request) {
 }
 
 async function getGroup(env: Env, ref: string) {
-  const g = await env.DB.prepare("SELECT id, reference, name, currency, created_at FROM groups WHERE reference = ?")
+  const g = await env.DB.prepare(
+    "SELECT id, reference, name, currency, created_at, expires_at, extended FROM groups WHERE reference = ?",
+  )
     .bind(ref)
-    .first<{ id: string; reference: string; name: string; currency: string; created_at: string }>();
+    .first<{
+      id: string;
+      reference: string;
+      name: string;
+      currency: string;
+      created_at: string;
+      expires_at: string | null;
+      extended: number;
+    }>();
   if (!g) throw new HttpError(404, "Group not found");
+  assertLive(g.expires_at);
 
   const [members, expenses, shares, settlements] = await env.DB.batch([
     env.DB.prepare("SELECT id, name FROM members WHERE group_id = ? ORDER BY position, created_at").bind(g.id),
@@ -144,6 +166,8 @@ async function getGroup(env: Env, ref: string) {
     name: g.name,
     currency: g.currency,
     createdAt: g.created_at,
+    expiresAt: g.expires_at,
+    canExtend: g.expires_at ? extend(Date.parse(g.created_at), Date.parse(g.expires_at), g.extended === 1).ok : false,
     members: members.results,
     expenses: (expenses.results as Record<string, string | number>[]).map((e) => ({
       id: e.id,
@@ -245,6 +269,34 @@ async function addSettlement(env: Env, ref: string, req: Request) {
   return json({ id }, 201);
 }
 
+async function extendGroup(env: Env, ref: string) {
+  const g = await env.DB.prepare("SELECT id, created_at, expires_at, extended FROM groups WHERE reference = ?")
+    .bind(ref)
+    .first<{ id: string; created_at: string; expires_at: string | null; extended: number }>();
+  if (!g) throw new HttpError(404, "Group not found");
+  assertLive(g.expires_at);
+  if (!g.expires_at) throw new HttpError(409, "This group has no expiry date");
+  const r = extend(Date.parse(g.created_at), Date.parse(g.expires_at), g.extended === 1);
+  if (!r.ok) throw new HttpError(409, r.reason);
+  const expiresAt = new Date(r.expiresMs).toISOString();
+  await env.DB.prepare("UPDATE groups SET expires_at = ?, extended = 1 WHERE id = ?").bind(expiresAt, g.id).run();
+  return json({ expiresAt });
+}
+
+// Runs daily (see wrangler.toml). Deletes expired groups and everything in them.
+async function purgeExpired(env: Env): Promise<number> {
+  const t = now();
+  const expired = "SELECT id FROM groups WHERE expires_at IS NOT NULL AND expires_at < ?";
+  const results = await env.DB.batch([
+    env.DB.prepare(`DELETE FROM settlements WHERE group_id IN (${expired})`).bind(t),
+    env.DB.prepare(`DELETE FROM expense_shares WHERE group_id IN (${expired})`).bind(t),
+    env.DB.prepare(`DELETE FROM expenses WHERE group_id IN (${expired})`).bind(t),
+    env.DB.prepare(`DELETE FROM members WHERE group_id IN (${expired})`).bind(t),
+    env.DB.prepare("DELETE FROM groups WHERE expires_at IS NOT NULL AND expires_at < ?").bind(t),
+  ]);
+  return results[4].meta.changes;
+}
+
 // ---------- router ----------
 
 async function handleApi(req: Request, env: Env, path: string[]): Promise<Response> {
@@ -262,6 +314,7 @@ async function handleApi(req: Request, env: Env, path: string[]): Promise<Respon
   if (sub === "expenses" && req.method === "POST" && !path[4]) return addExpense(env, ref, req);
   if (sub === "expenses" && req.method === "DELETE" && path[4]) return deleteExpense(env, ref, path[4]);
   if (sub === "settlements" && req.method === "POST") return addSettlement(env, ref, req);
+  if (sub === "extend" && req.method === "POST") return extendGroup(env, ref);
   throw new HttpError(404, "Not found");
 }
 
@@ -278,5 +331,10 @@ export default {
       console.error(e);
       return json({ error: "Something went wrong" }, 500);
     }
+  },
+  async scheduled(_controller, env, ctx): Promise<void> {
+    ctx.waitUntil(
+      purgeExpired(env).then((n) => console.log(`Purged ${n} expired group(s)`)),
+    );
   },
 } satisfies ExportedHandler<Env>;

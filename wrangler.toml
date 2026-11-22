@@ -3,6 +3,10 @@ name = "quidsin"
 main = "worker/index.ts"
 compatibility_date = "2026-11-01"
 
+# Daily clean-up of expired groups (03:17 UTC).
+[triggers]
+crons = ["17 3 * * *"]
+
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"

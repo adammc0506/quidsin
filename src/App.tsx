@@ -180,6 +180,7 @@ function NewGroup() {
   const [members, setMembers] = useState(["", "", ""]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [threeMonths, setThreeMonths] = useState(false);
   const clean = members.map((m) => m.trim()).filter(Boolean);
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,7 +189,7 @@ function NewGroup() {
     if (new Set(clean.map((c) => c.toLowerCase())).size !== clean.length) return setErr("Each person needs a different name.");
     setBusy(true);
     try {
-      const ref = await store.createGroup(name.trim(), clean);
+      const ref = await store.createGroup(name.trim(), clean, threeMonths ? 90 : 30);
       rememberGroup({ reference: ref, name: name.trim() });
       go(`/g/${ref}`);
     } catch (x) {
@@ -218,6 +219,17 @@ function NewGroup() {
           Add another person
         </button>
       </fieldset>
+      {store.mode === "cloud" && (
+        <label className="check">
+          <input type="checkbox" checked={threeMonths} onChange={(e) => setThreeMonths(e.target.checked)} />
+          <span>
+            <strong>Keep for 3 months</strong>
+            <small className="muted">
+              Groups are deleted after {threeMonths ? "3 months" : "30 days"}, with everything in them.
+            </small>
+          </span>
+        </label>
+      )}
       {err && <p className="error">{err}</p>}
       <button className="btn primary big" disabled={busy}>
         {busy ? "Creating…" : "Create group"}
@@ -264,7 +276,10 @@ function GroupScreen({ reference, sub }: { reference: string; sub?: string }) {
     return (
       <div className="stack center">
         <h1>Group not found</h1>
-        <p className="muted">Check the reference {reference} and try again.</p>
+        <p className="muted">
+          Check the reference {reference} and try again. Groups are deleted automatically after 30 days, or 3 months if
+          they were kept longer.
+        </p>
         <button
           className="btn"
           onClick={() => {
@@ -336,7 +351,26 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
   const myBalance = balances.get(me) ?? 0;
   const [copied, setCopied] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [extendErr, setExtendErr] = useState("");
   const fmt = (p: number) => formatPence(p, group.currency);
+  const expiry = group.expiresAt ? new Date(group.expiresAt) : null;
+  const daysLeft = expiry ? Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / 86_400_000)) : null;
+  const expiryText = expiry
+    ? expiry.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        ...(expiry.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}),
+      })
+    : "";
+  const keepMore = async () => {
+    setExtendErr("");
+    try {
+      await store.extendGroup(group.reference);
+      reload();
+    } catch (x) {
+      setExtendErr((x as Error).message);
+    }
+  };
 
   const share = async () => {
     const url = shareUrl(group.reference);
@@ -390,6 +424,22 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
           {copied ? "Reference copied" : "Share reference"}
         </button>
       </section>
+
+      {expiry && daysLeft !== null && (
+        <div className={`keep${daysLeft <= 7 ? " warn" : ""}`} role={daysLeft <= 7 ? "status" : undefined}>
+          <p>
+            {daysLeft <= 7
+              ? `Deletes ${daysLeft <= 1 ? "tomorrow" : `in ${daysLeft} days`} (${expiryText}). Settle up or note your figures.`
+              : `Deletes on ${expiryText}`}
+          </p>
+          {group.canExtend && (
+            <button className="btn small-btn" onClick={keepMore}>
+              Keep another month
+            </button>
+          )}
+          {extendErr && <p className="error">{extendErr}</p>}
+        </div>
+      )}
 
       <nav className="tabs">
         {[

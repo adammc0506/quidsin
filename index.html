@@ -2,15 +2,69 @@
 <html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <meta name="theme-color" content="#0f8a5f" />
+    <link rel="icon" type="image/svg+xml" href="/tabandtally.svg" />
+    <meta name="theme-color" content="#14233a" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="QuidsIn — split group bills with one shareable reference. No sign-up, no daily limits." />
-    <title>QuidsIn — split it, sorted</title>
+    <meta
+      name="description"
+      content="Free tools for groups: split bills, draw names, keep score. One shareable code, no sign-up."
+    />
+    <title>Tab &amp; Tally — free tools for groups</title>
+    <script type="module" src="/src/hub.ts"></script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <main class="page">
+      <article class="receipt" aria-labelledby="title">
+        <header class="masthead">
+          <svg class="tally" viewBox="0 0 64 40" role="img" aria-label="Tally marks">
+            <g stroke="currentColor" stroke-width="5" stroke-linecap="round">
+              <path d="M12 4v32M24 4v32M36 4v32M48 4v32" />
+            </g>
+            <path d="M5 27 56 13" stroke="#e8a317" stroke-width="5" stroke-linecap="round" />
+          </svg>
+          <h1 id="title">Tab &amp; Tally</h1>
+          <p class="lede">Free tools for groups. Share one code and everyone is in. No sign-up.</p>
+        </header>
+
+        <ul class="items">
+          <li>
+            <a class="item" href="/quidsin/">
+              <span class="name">QuidsIn</span>
+              <span class="price">£0.00</span>
+              <span class="what">Split bills and see who owes who. Works out the fewest payments to settle up.</span>
+            </a>
+          </li>
+          <li class="soon">
+            <div class="item">
+              <span class="name">Secret Santa</span>
+              <span class="price">Soon</span>
+              <span class="what">Draw names. Each person sees only who they got.</span>
+            </div>
+          </li>
+          <li class="soon">
+            <div class="item">
+              <span class="name">Whip-round</span>
+              <span class="price">Soon</span>
+              <span class="what">Collect for a gift or a leaving do and see who has paid.</span>
+            </div>
+          </li>
+          <li class="soon">
+            <div class="item">
+              <span class="name">Tally</span>
+              <span class="price">Soon</span>
+              <span class="what">Keep score for game nights, leagues and quizzes.</span>
+            </div>
+          </li>
+        </ul>
+
+        <footer class="total">
+          <p class="sum"><span>Total</span><span class="money">£0.00</span></p>
+          <p class="fine">
+            Free, paid for by adverts. Groups are deleted automatically after 30 days, or 3 months if you choose.
+            We only track who owes what, and never hold your money.
+          </p>
+        </footer>
+      </article>
+    </main>
   </body>
 </html>

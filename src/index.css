@@ -200,3 +200,11 @@ input.mini { width: 104px; min-height: 42px; padding: 8px 10px; text-align: righ
 @media (min-width: 600px) {
   .hero h1 { font-size: 2.9rem; }
 }
+
+/* ---------- retention ---------- */
+.check { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1.5px solid var(--rule); border-radius: 10px; background: var(--sheet); cursor: pointer; }
+.check input { width: 22px; min-height: 22px; height: 22px; margin: 2px 0 0; padding: 0; accent-color: var(--note); flex: none; }
+.check span { display: flex; flex-direction: column; gap: 2px; }
+.keep { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; font-size: 0.88rem; color: var(--muted); margin-top: -6px; }
+.keep.warn { color: var(--owe); background: #fbeff1; border: 1px solid #efc7cf; border-radius: 10px; padding: 10px 12px; margin-top: 0; }
+.keep .btn { border-color: currentColor; color: inherit; }

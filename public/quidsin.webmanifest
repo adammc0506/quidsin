@@ -1,0 +1,11 @@
+{
+  "name": "QuidsIn",
+  "short_name": "QuidsIn",
+  "description": "Split group bills with one shareable reference.",
+  "start_url": "/quidsin/",
+  "scope": "/quidsin/",
+  "display": "standalone",
+  "background_color": "#f1f4f1",
+  "theme_color": "#4b2e83",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:app": "tsc -b && vite build --config vite.app.config.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.2",
