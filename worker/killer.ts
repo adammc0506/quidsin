@@ -27,13 +27,14 @@ type GameRow = {
   secret_balls: number;
   mode: string;
   black_pays: number;
+  final_shot: number;
   created_at: string;
   expires_at: string;
   extended: number;
 };
 type PlayerRow = { id: string; name: string; ball: number; lives: number; killer: number; blacks: number };
 const GAME_COLS =
-  "id, reference, name, start_lives, killer_required, own_loses, scratch_loses, secret_balls, mode, black_pays, created_at, expires_at, extended";
+  "id, reference, name, start_lives, killer_required, own_loses, scratch_loses, secret_balls, mode, black_pays, final_shot, created_at, expires_at, extended";
 
 function live(g: GameRow | null, missing = "Game not found"): GameRow {
   if (!g) throw new HttpError(404, missing);
@@ -44,6 +45,7 @@ function live(g: GameRow | null, missing = "Game not found"): GameRow {
 const rulesOf = (g: GameRow) => ({
   mode: g.mode === "turns" ? ("turns" as const) : ("balls" as const),
   blackPays: g.black_pays === 1,
+  finalShot: g.final_shot === 1,
   killerRequired: g.killer_required === 1,
   ownLoses: g.own_loses === 1,
   scratchLoses: g.scratch_loses === 1,
@@ -59,8 +61,17 @@ const asP = (rows: PlayerRow[]): P[] => rows.map((p) => ({ id: p.id, name: p.nam
 
 async function view(env: KillerEnv, g: GameRow, admin: boolean) {
   const rows = await playersOf(env, g.id);
-  const win = winner(asP(rows));
+  const sole = winner(asP(rows));
   const turns = g.mode === "turns";
+  const lastAny = g.final_shot === 1
+    ? await env.KILLER.prepare("SELECT kind, shooter_id AS s FROM events WHERE game_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1")
+        .bind(g.id)
+        .first<{ kind: string; s: string | null }>()
+    : null;
+  // With the final-shot rule, one survivor isn't a winner until they pot a ball.
+  const won = !!sole && (g.final_shot !== 1 || (!!lastAny && (lastAny.kind === "hit" || lastAny.kind === "black") && lastAny.s === sole.id));
+  const win = won ? sole : null;
+  const finalist = sole && !won && g.final_shot === 1 ? sole : null;
   const showAll = !turns && (admin || g.secret_balls !== 1 || !!win);
   const last = turns
     ? await env.KILLER.prepare("SELECT shooter_id AS s FROM events WHERE game_id = ? AND shooter_id IS NOT NULL ORDER BY created_at DESC, rowid DESC LIMIT 1")
@@ -77,7 +88,8 @@ async function view(env: KillerEnv, g: GameRow, admin: boolean) {
     name: g.name,
     startLives: g.start_lives,
     rules: { ...rulesOf(g), secretBalls: g.secret_balls === 1 },
-    turnId: turns ? nextTurn(asP(rows), last?.s ?? null) : null,
+    turnId: turns ? (finalist ? finalist.id : win ? null : nextTurn(asP(rows), last?.s ?? null)) : null,
+    finalistId: finalist?.id ?? null,
     expiresAt: g.expires_at,
     winnerId: win?.id ?? null,
     players: rows.map((p) => ({
@@ -132,6 +144,7 @@ async function createGame(env: KillerEnv, req: Request) {
   const scratchLoses = turns ? 0 : flag("scratchLoses", true);
   const secretBalls = turns ? 0 : flag("secretBalls", false);
   const blackPays = turns ? flag("blackPays", true) : 0;
+  const finalShot = turns ? flag("finalShot", true) : 0;
   const retention = parseRetention(b.retentionDays);
   if (!retention) throw new HttpError(400, "Games can be kept for 30 or 90 days");
 
@@ -145,8 +158,8 @@ async function createGame(env: KillerEnv, req: Request) {
     try {
       await env.KILLER.batch([
         env.KILLER.prepare(
-          "INSERT INTO games (id, reference, name, start_lives, killer_required, own_loses, scratch_loses, secret_balls, mode, black_pays, admin_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ).bind(id, reference, name, lives, killerRequired, ownLoses, scratchLoses, secretBalls, turns ? "turns" : "balls", blackPays, adminHash, created, expires),
+          "INSERT INTO games (id, reference, name, start_lives, killer_required, own_loses, scratch_loses, secret_balls, mode, black_pays, final_shot, admin_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ).bind(id, reference, name, lives, killerRequired, ownLoses, scratchLoses, secretBalls, turns ? "turns" : "balls", blackPays, finalShot, adminHash, created, expires),
         ...names.map((n, i) =>
           env.KILLER.prepare("INSERT INTO players (id, game_id, name, position, ball, lives) VALUES (?, ?, ?, ?, ?, ?)").bind(
             uid(), id, n, i, balls[i], lives,
@@ -205,16 +218,21 @@ async function act(env: KillerEnv, token: string, req: Request) {
   }
   const n = await env.KILLER.prepare("SELECT COUNT(*) AS n FROM events WHERE game_id = ?").bind(g.id).first<{ n: number }>();
   if ((n?.n ?? 0) >= MAX_EVENTS) throw new HttpError(409, "This game is full. Start a new one.");
-  const o = decide(rulesOf(g), asP(await playersOf(env, g.id)), a);
+  const rows = await playersOf(env, g.id);
+  const current = JSON.parse(await (await view(env, g, true)).text()) as { winnerId: string | null };
+  const o = decide(rulesOf(g), asP(rows), a, current.winnerId !== null);
   if ("error" in o) throw new HttpError(409, o.error);
+  // A final-shot miss puts everyone back in with full lives; remember lives so it can be undone.
+  const snapshot = o.rollover ? JSON.stringify(Object.fromEntries(rows.map((p) => [p.id, p.lives]))) : null;
   const stmts = [
     env.KILLER.prepare(
-      "INSERT INTO events (id, game_id, kind, shooter_id, victim_id, lives_player_id, lives_delta, killer_player_id, black_player_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    ).bind(uid(), g.id, o.kind, o.shooterId ?? null, o.victimId ?? null, o.livesPlayerId ?? null, o.livesDelta ?? null, o.killerPlayerId ?? null, o.blackPlayerId ?? null, now()),
+      "INSERT INTO events (id, game_id, kind, shooter_id, victim_id, lives_player_id, lives_delta, killer_player_id, black_player_id, snapshot, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(uid(), g.id, o.rollover ? "rollover" : o.kind, o.shooterId ?? null, o.victimId ?? null, o.livesPlayerId ?? null, o.livesDelta ?? null, o.killerPlayerId ?? null, o.blackPlayerId ?? null, snapshot, now()),
   ];
   if (o.livesPlayerId)
     stmts.push(env.KILLER.prepare("UPDATE players SET lives = lives + ? WHERE id = ? AND game_id = ?").bind(o.livesDelta, o.livesPlayerId, g.id));
   if (o.killerPlayerId) stmts.push(env.KILLER.prepare("UPDATE players SET killer = 1 WHERE id = ? AND game_id = ?").bind(o.killerPlayerId, g.id));
+  if (o.rollover) stmts.push(env.KILLER.prepare("UPDATE players SET lives = ? WHERE game_id = ?").bind(g.start_lives, g.id));
   if (o.blackPlayerId) stmts.push(env.KILLER.prepare("UPDATE players SET blacks = blacks + 1 WHERE id = ? AND game_id = ?").bind(o.blackPlayerId, g.id));
   await env.KILLER.batch(stmts);
   return view(env, g, true);
@@ -223,15 +241,20 @@ async function act(env: KillerEnv, token: string, req: Request) {
 async function undo(env: KillerEnv, token: string) {
   const g = await byAdmin(env, token);
   const e = await env.KILLER.prepare(
-    "SELECT rowid AS rid, lives_player_id AS lp, lives_delta AS ld, killer_player_id AS kp, black_player_id AS bp FROM events WHERE game_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
+    "SELECT rowid AS rid, lives_player_id AS lp, lives_delta AS ld, killer_player_id AS kp, black_player_id AS bp, snapshot AS snap FROM events WHERE game_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
   )
     .bind(g.id)
-    .first<{ rid: number; lp: string | null; ld: number | null; kp: string | null; bp: string | null }>();
+    .first<{ rid: number; lp: string | null; ld: number | null; kp: string | null; bp: string | null; snap: string | null }>();
   if (e) {
     const stmts = [env.KILLER.prepare("DELETE FROM events WHERE rowid = ?").bind(e.rid)];
     if (e.lp && e.ld) stmts.push(env.KILLER.prepare("UPDATE players SET lives = lives - ? WHERE id = ? AND game_id = ?").bind(e.ld, e.lp, g.id));
     if (e.kp) stmts.push(env.KILLER.prepare("UPDATE players SET killer = 0 WHERE id = ? AND game_id = ?").bind(e.kp, g.id));
     if (e.bp) stmts.push(env.KILLER.prepare("UPDATE players SET blacks = MAX(blacks - 1, 0) WHERE id = ? AND game_id = ?").bind(e.bp, g.id));
+    if (e.snap) {
+      const before = JSON.parse(e.snap) as Record<string, number>;
+      for (const [pid, lives] of Object.entries(before))
+        stmts.push(env.KILLER.prepare("UPDATE players SET lives = ? WHERE id = ? AND game_id = ?").bind(lives, pid, g.id));
+    }
     await env.KILLER.batch(stmts);
   }
   return view(env, g, true);

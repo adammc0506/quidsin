@@ -91,7 +91,8 @@ function status(p: Player, g: Game) {
   if (p.lives <= 0) return "Out";
   if (rules.mode === "turns") {
     const bits = [];
-    if (g.turnId === p.id) bits.push("Up next");
+    if (g.finalistId === p.id) bits.push("Final shot");
+    else if (g.turnId === p.id) bits.push("Up next");
     if (p.blacks > 0) bits.push("Covers the re-rack");
     return bits.join(" · ");
   }
@@ -117,6 +118,11 @@ function Table({ g, keeper, openId, onPick }: { g: Game; keeper?: boolean; openI
           {g.players.filter((p) => p.lives > 0).length} of {g.players.length} still in, {g.startLives} {g.startLives === 1 ? "life" : "lives"} each
         </p>
       </div>
+      {g.finalistId && (
+        <div className="winner final" role="status">
+          {g.players.find((p) => p.id === g.finalistId)?.name} is the last one standing. One pot wins it.
+        </div>
+      )}
       {win && (
         <div className="winner" role="status">
           {g.rules.mode === "balls" && <Ball n={win.ball} small />}
@@ -167,6 +173,8 @@ function describe(e: GameEvent, g: Game): string {
       return `${n(e.shooterId)} missed and lost a life`;
     case "black":
       return `${n(e.shooterId)} potted the black and covers the next re-rack`;
+    case "rollover":
+      return `${n(e.shooterId)} missed the final shot. Everyone is back in with full lives`;
     case "skip":
       return `${n(e.shooterId)}'s turn was skipped`;
     default:
@@ -295,6 +303,7 @@ function Toggle({ on, set, title, hint }: { on: boolean; set: (v: boolean) => vo
 function NewGame() {
   const [mode, setMode] = useState<"turns" | "balls">("turns");
   const [blackPays, setBlackPays] = useState(true);
+  const [finalShot, setFinalShot] = useState(true);
   const [name, setName] = useState("");
   const [rows, setRows] = useState<Row[]>([
     { name: "", ball: "" },
@@ -342,6 +351,7 @@ function NewGame() {
       const r = await api.create({
         mode,
         blackPays,
+        finalShot,
         name: name.trim(),
         players: named.map((x) => ({ name: x.name.trim(), ball: !pub && x.ball ? Number(x.ball) : undefined })),
         lives,
@@ -426,12 +436,20 @@ function NewGame() {
         <fieldset className="field">
           <legend>House rules</legend>
           {pub ? (
+            <>
+            <Toggle
+              on={finalShot}
+              set={setFinalShot}
+              title="Final shot to win"
+              hint={finalShot ? "The last player standing must pot a ball to win. If they miss, everyone is back in with full lives." : "Off: the last player standing wins straight away."}
+            />
             <Toggle
               on={blackPays}
               set={setBlackPays}
               title="Black covers the next re-rack"
               hint={blackPays ? "Whoever pots the black, at any point, pays for the next re-rack. It doesn't cost a life." : "Off: the black is just another ball."}
             />
+            </>
           ) : (
             <>
           <Toggle
@@ -544,24 +562,26 @@ function Referee({ token, fresh }: { token: string; fresh: boolean }) {
 
         {pub && shooter && !g.winnerId && (
           <section className="card add" aria-label={`${shooter.name}'s shot`}>
-            <h2 className="h2">{shooter.id === g.turnId ? `${shooter.name}'s shot` : `${shooter.name} (out of turn)`}</h2>
+            <h2 className="h2">{g.finalistId ? `${shooter.name}'s final shot` : shooter.id === g.turnId ? `${shooter.name}'s shot` : `${shooter.name} (out of turn)`}</h2>
             <div className="shot">
               <button className="btn primary" onClick={() => run(() => api.act(token, { type: "hit", shooterId: shooter.id }), true)}>
-                Potted a ball
+                {g.finalistId ? "Potted a ball, wins" : "Potted a ball"}
               </button>
               <button className="btn miss" onClick={() => run(() => api.act(token, { type: "miss", shooterId: shooter.id }), true)}>
-                Missed, lose a life
+                {g.finalistId ? "Missed, everyone back in" : "Missed, lose a life"}
               </button>
             </div>
             <div className="actions">
               {g.rules.blackPays && (
                 <button className="btn" onClick={() => run(() => api.act(token, { type: "black", shooterId: shooter.id }), true)}>
-                  Potted the black
+                  {g.finalistId ? "Potted the black, wins" : "Potted the black"}
                 </button>
               )}
-              <button className="btn" onClick={() => run(() => api.act(token, { type: "skip", shooterId: shooter.id }), true)}>
-                Skip turn
-              </button>
+              {!g.finalistId && (
+                <button className="btn" onClick={() => run(() => api.act(token, { type: "skip", shooterId: shooter.id }), true)}>
+                  Skip turn
+                </button>
+              )}
             </div>
             <p className="sub-h">Fix lives by hand</p>
             <div className="actions">
@@ -617,7 +637,7 @@ function Referee({ token, fresh }: { token: string; fresh: boolean }) {
             </div>
           </section>
         )}
-        {!g.winnerId && (
+        {!g.winnerId && !g.finalistId && (
           <p className="muted small">{pub ? "The highlighted player is up next. Tap someone else if they shoot out of turn." : "Tap the player who took the shot."}</p>
         )}
         {note && <p className="toast" role="status">{note}</p>}

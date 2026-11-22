@@ -1,6 +1,6 @@
 // Killer pool rules, kept apart from the database so they can be tested.
 
-export type Rules = { mode?: "balls" | "turns"; killerRequired: boolean; ownLoses: boolean; scratchLoses: boolean; blackPays?: boolean };
+export type Rules = { mode?: "balls" | "turns"; killerRequired: boolean; ownLoses: boolean; scratchLoses: boolean; blackPays?: boolean; finalShot?: boolean };
 export type P = { id: string; name: string; lives: number; killer: boolean; blacks?: number };
 export type Action =
   | { type: "own"; shooterId: string }
@@ -12,12 +12,13 @@ export type Action =
 /** What an action changes. `error` means nothing should change. */
 export type Outcome =
   | { error: string }
-  | { kind: Action["type"]; shooterId?: string; victimId?: string; livesPlayerId?: string; livesDelta?: number; killerPlayerId?: string; blackPlayerId?: string };
+  | { kind: Action["type"]; shooterId?: string; victimId?: string; livesPlayerId?: string; livesDelta?: number; killerPlayerId?: string; blackPlayerId?: string; rollover?: boolean };
 
 export const alive = (ps: P[]) => ps.filter((p) => p.lives > 0);
 export const winner = (ps: P[]) => (ps.length >= 2 && alive(ps).length === 1 ? alive(ps)[0] : null);
 
-export function decide(rules: Rules, ps: P[], a: Action): Outcome {
+/** `won` is true once the game has been decided (with the final-shot rule, that needs a pot, not just one survivor). */
+export function decide(rules: Rules, ps: P[], a: Action, won = false): Outcome {
   const find = (id: string) => ps.find((p) => p.id === id);
   if (a.type === "adjust") {
     const p = find(a.playerId);
@@ -28,12 +29,17 @@ export function decide(rules: Rules, ps: P[], a: Action): Outcome {
   }
   const s = find(a.shooterId);
   if (!s) return { error: "That player isn't in this game" };
-  if (winner(ps)) return { error: "The game is over. Start a new game from the setup section." };
+  const sole = winner(ps);
+  if (won || (sole && !rules.finalShot)) return { error: "The game is over. Start again from the bottom of the page." };
   if (s.lives <= 0) return { error: `${s.name} is already out` };
+  const finalShot = !!(sole && rules.finalShot);
+  if (finalShot && sole && s.id !== sole.id) return { error: `${sole.name} is the last one standing. Only they can take the final shot.` };
   const turns = rules.mode === "turns";
   if (a.type === "hit" || a.type === "miss" || a.type === "black" || a.type === "skip") {
     if (!turns) return { error: "That action is for pub killer games" };
+    if (finalShot && a.type === "skip") return { error: "The final shot can't be skipped" };
     if (a.type === "hit" || a.type === "skip") return { kind: a.type, shooterId: s.id };
+    if (a.type === "miss" && finalShot) return { kind: "miss", shooterId: s.id, rollover: true };
     if (a.type === "miss") return { kind: "miss", shooterId: s.id, livesPlayerId: s.id, livesDelta: -1 };
     if (!rules.blackPays) return { error: "The black isn't special in this game" };
     return { kind: "black", shooterId: s.id, blackPlayerId: s.id };

@@ -185,3 +185,4 @@ select { font: inherit; color: var(--ink); width: 100%; padding: 0 10px; min-hei
 .shot .btn { min-height: 64px; font-size: 1.05rem; }
 .btn.miss { border-color: #b42840; color: #b42840; }
 .payers { border-color: var(--chalk-gold); background: #fff8e3; }
+.winner.final { background: #fff8e3; font-size: 1.05rem; }

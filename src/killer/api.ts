@@ -3,10 +3,10 @@ import { callApi, copy, shareOrCopy, ApiError } from "../lib/client";
 export { ApiError, copy, shareOrCopy };
 
 export type Player = { id: string; name: string; lives: number; killer: boolean; blacks: number; ball: number | null };
-export type Rules = { mode: "balls" | "turns"; blackPays: boolean; killerRequired: boolean; ownLoses: boolean; scratchLoses: boolean; secretBalls: boolean };
+export type Rules = { mode: "balls" | "turns"; blackPays: boolean; finalShot: boolean; killerRequired: boolean; ownLoses: boolean; scratchLoses: boolean; secretBalls: boolean };
 export type GameEvent = {
   id: string;
-  kind: "own" | "pot" | "scratch" | "adjust" | "hit" | "miss" | "black" | "skip";
+  kind: "own" | "pot" | "scratch" | "adjust" | "hit" | "miss" | "black" | "skip" | "rollover";
   shooterId: string | null;
   victimId: string | null;
   livesPlayerId: string | null;
@@ -21,6 +21,7 @@ export type Game = {
   rules: Rules;
   expiresAt: string;
   winnerId: string | null;
+  finalistId: string | null;
   turnId: string | null;
   players: Player[];
   recent: GameEvent[];
@@ -29,6 +30,7 @@ export type Game = {
 export type Setup = {
   mode: "balls" | "turns";
   blackPays: boolean;
+  finalShot: boolean;
   name: string;
   players: { name: string; ball?: number }[];
   lives: number;

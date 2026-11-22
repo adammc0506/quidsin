@@ -98,3 +98,32 @@ describe("pub killer (turns)", () => {
     expect(nextTurn(ps, "a")).toBeNull();
   });
 });
+
+describe("final shot", () => {
+  const fs: Rules = { mode: "turns", killerRequired: false, ownLoses: false, scratchLoses: false, blackPays: true, finalShot: true };
+  const lastOne = (): P[] => {
+    const ps = mk();
+    ps[1].lives = 0;
+    ps[2].lives = 0;
+    return ps;
+  };
+  it("the survivor must pot, and a miss rolls everyone back in", () => {
+    expect(decide(fs, lastOne(), { type: "hit", shooterId: "a" })).toMatchObject({ kind: "hit" });
+    expect(decide(fs, lastOne(), { type: "black", shooterId: "a" })).toMatchObject({ kind: "black" });
+    expect(decide(fs, lastOne(), { type: "miss", shooterId: "a" })).toMatchObject({ kind: "miss", rollover: true });
+    expect(decide(fs, lastOne(), { type: "miss", shooterId: "a" })).not.toHaveProperty("livesDelta");
+  });
+  it("only the survivor shoots, and the final shot can't be skipped", () => {
+    expect(decide(fs, lastOne(), { type: "hit", shooterId: "b" })).toHaveProperty("error");
+    expect(decide(fs, lastOne(), { type: "skip", shooterId: "a" })).toHaveProperty("error");
+  });
+  it("nothing more happens once won", () => {
+    expect(decide(fs, lastOne(), { type: "hit", shooterId: "a" }, true)).toHaveProperty("error");
+  });
+  it("with the rule off, one survivor is an immediate win", () => {
+    expect(decide({ ...fs, finalShot: false }, lastOne(), { type: "hit", shooterId: "a" })).toHaveProperty("error");
+  });
+  it("a miss with several players left still costs a life", () => {
+    expect(decide(fs, mk(), { type: "miss", shooterId: "a" })).toMatchObject({ livesPlayerId: "a", livesDelta: -1 });
+  });
+});
