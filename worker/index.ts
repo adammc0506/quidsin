@@ -2,52 +2,24 @@
 // The Worker also serves the web app from ./dist (static assets, free).
 // Every group endpoint needs the group's reference, which acts as its key.
 
+import { HttpError, body, cleanText, cors, json, newReference, now, refPattern, uid } from "./http";
 import { expiryFor, extend, isExpired, parseRetention } from "./retention";
+import { handleSanta, purgeSanta, type SantaEnv } from "./santa";
 
-interface Env {
+interface Env extends SantaEnv {
   DB: D1Database;
 }
 
-const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-const REF_RE = /^QI-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$/;
+const REF_RE = refPattern("QI");
+const newGroupRef = () => newReference("QI");
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_PENCE = 100_000_000; // £1m per expense
 
-class HttpError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Max-Age": "86400",
-};
 
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...cors },
-  });
 
-const now = () => new Date().toISOString();
-const uid = () => crypto.randomUUID();
 
-function newReference(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(8));
-  const s = [...bytes].map((b) => ALPHABET[b % 32]).join("");
-  return `QI-${s.slice(0, 4)}-${s.slice(4)}`;
-}
 
-function cleanText(v: unknown, field: string, max: number): string {
-  if (typeof v !== "string") throw new HttpError(400, `${field} is required`);
-  const s = v.trim().replace(/\s+/g, " ");
-  if (!s) throw new HttpError(400, `${field} is required`);
-  if (s.length > max) throw new HttpError(400, `${field} is too long (max ${max})`);
-  return s;
-}
 
 function pence(v: unknown, field: string, allowZero = false): number {
   if (typeof v !== "number" || !Number.isInteger(v) || v < (allowZero ? 0 : 1) || v > MAX_PENCE)
@@ -55,15 +27,6 @@ function pence(v: unknown, field: string, allowZero = false): number {
   return v;
 }
 
-async function body(req: Request): Promise<Record<string, unknown>> {
-  try {
-    const b = await req.json();
-    if (b && typeof b === "object") return b as Record<string, unknown>;
-  } catch {
-    /* fall through */
-  }
-  throw new HttpError(400, "Invalid JSON body");
-}
 
 function assertLive(expiresAt: string | null) {
   if (isExpired(expiresAt ? Date.parse(expiresAt) : null, Date.now()))
@@ -102,7 +65,7 @@ async function createGroup(env: Env, req: Request) {
   const created = now();
   const expires = new Date(expiryFor(Date.parse(created), retention)).toISOString();
   for (let attempt = 0; attempt < 5; attempt++) {
-    const reference = newReference();
+    const reference = newGroupRef();
     try {
       await env.DB.batch([
         env.DB.prepare(
@@ -325,6 +288,7 @@ export default {
     if (path[0] !== "api") return new Response("Not found", { status: 404 }); // static assets are served before this
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     try {
+      if (path[1] === "santa") return await handleSanta(req, env, path.slice(2));
       return await handleApi(req, env, path);
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message }, e.status);
@@ -333,8 +297,7 @@ export default {
     }
   },
   async scheduled(_controller, env, ctx): Promise<void> {
-    ctx.waitUntil(
-      purgeExpired(env).then((n) => console.log(`Purged ${n} expired group(s)`)),
-    );
+    ctx.waitUntil(purgeExpired(env).then((n) => console.log(`Purged ${n} expired QuidsIn group(s)`)));
+    ctx.waitUntil(purgeSanta(env).then((n) => console.log(`Purged ${n} expired Secret Santa draw(s)`)));
   },
 } satisfies ExportedHandler<Env>;

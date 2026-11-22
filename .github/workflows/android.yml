@@ -45,10 +45,12 @@ jobs:
       - name: Apply database migrations
         if: env.CLOUDFLARE_API_TOKEN != ''
         run: |
-          if ! npx wrangler d1 migrations apply quidsin --remote > mig.log 2>&1; then
-            echo "::error title=D1 migrations failed::$(tail -c 1500 mig.log | tr '\n' ' ')"; exit 1
-          fi
-          cat mig.log
+          for db in quidsin santa; do
+            if ! npx wrangler d1 migrations apply "$db" --remote > mig.log 2>&1; then
+              echo "::error title=D1 migrations failed ($db)::$(tail -c 1500 mig.log | tr '\n' ' ')"; exit 1
+            fi
+            cat mig.log
+          done
 
       - name: Deploy website and API
         id: deploy

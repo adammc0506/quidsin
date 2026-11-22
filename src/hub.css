@@ -96,3 +96,5 @@ a.item:hover .open { background: #3a2366; }
 .doc a:not(.doc-brand) { color: #4b2e83; font-weight: 560; text-underline-offset: 3px; text-decoration: underline; }
 .doc .meta { color: var(--muted); font-size: 0.88rem; }
 .doc-nav { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 22px; padding-top: 16px; border-top: 2px dashed var(--rule); font-size: 0.92rem; font-weight: 620; }
+.open.santa { background: #12392b; }
+a.item:hover .open.santa { background: #0c2a1f; }
