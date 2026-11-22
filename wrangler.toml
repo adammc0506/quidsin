@@ -1,0 +1,16 @@
+# QuidsIn on Cloudflare: one Worker serves the web app (./dist) and the /api routes.
+name = "quidsin"
+main = "worker/index.ts"
+compatibility_date = "2026-11-01"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "quidsin"
+# Filled in automatically by the GitHub workflow (it creates the database if needed).
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

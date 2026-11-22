@@ -162,7 +162,7 @@ function Home() {
 
       {store.mode === "demo" && (
         <p className="muted small center">
-          Demo mode: groups are saved on this device only. Add your Firebase settings to share groups between phones.
+          Demo mode: groups are saved on this device only. Connect it to Cloudflare to share groups between phones.
         </p>
       )}
     </div>
@@ -239,7 +239,7 @@ function GroupScreen({ reference, sub }: { reference: string; sub?: string }) {
 
   useEffect(() => {
     if (store.subscribe) {
-      // Live updates: everyone in the group sees changes straight away.
+      // Keeps the group fresh so everyone sees each other's changes.
       return store.subscribe(
         reference,
         (g) => {

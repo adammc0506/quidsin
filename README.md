@@ -4,24 +4,25 @@ Split group bills with one shareable reference (e.g. `QI-7KQ4-M9X2`). No sign-up
 
 - **Web app:** Vite + React + TypeScript, installable as a PWA.
 - **Android app:** Capacitor wrapper in `android/`.
-- **Backend:** Firebase Cloud Firestore, free Spark plan (rules in `firebase/firestore.rules`).
-- **Demo mode:** with no Firebase settings, groups are saved on the device only — handy for trying it out.
+- **Backend:** Cloudflare Worker (`worker/index.ts`) + D1 database (`migrations/`), free plan. The same Worker serves the website.
+- **Demo mode:** with no Cloudflare connection, groups are saved on the device only — handy for trying it out.
 
-## 1. Set up Firebase (free, no card needed)
+## 1. Connect Cloudflare (free)
 
-1. Go to console.firebase.google.com and **Create a project** (Google Analytics can be off).
-2. **Build → Firestore Database → Create database**, choose location `europe-west2` (London), start in **production mode**.
-3. Open the **Rules** tab, replace everything with the contents of `firebase/firestore.rules`, then **Publish**.
-4. **Project settings → Your apps → Web (</>)**, register an app called QuidsIn, and copy `apiKey`, `authDomain`, `projectId` and `appId` into `src/firebase-config.ts` (or set them as GitHub secrets `VITE_FIREBASE_*`).
+1. In the Cloudflare dashboard open **Workers & Pages** once, so your free `workers.dev` subdomain is set up.
+2. **My Profile → API Tokens → Create Token**, use the **Edit Cloudflare Workers** template, add the permission **Account → D1 → Edit**, and create it.
+3. In the GitHub repo: **Settings → Secrets and variables → Actions**, add `CLOUDFLARE_API_TOKEN` (the token) and `CLOUDFLARE_ACCOUNT_ID` (shown on the dashboard's Workers & Pages overview).
+4. Push to `main` (or re-run the workflow). It creates the `quidsin` D1 database, applies the migrations, deploys the site and API to `https://quidsin.<your-subdomain>.workers.dev`, and builds an APK that talks to it.
 
-Each group is one Firestore document (`groups/{reference}`), so opening a group costs one read. Rules allow reading a group only by its exact reference and block listing, so the reference acts as the key. Free Spark quota: 1 GiB stored, 50,000 reads and 20,000 writes per day.
+Every API call needs the group reference, and the Worker validates all input (people belong to the group, shares add up). Free plan: 100,000 API requests a day, D1 5 million rows read and 100,000 written a day, 5 GB storage. The app refreshes an open group every 20 seconds, only while it's on screen.
 
 ## 2. Run the web app locally
 
 ```bash
 npm install
-cp .env.example .env.local   # optional: Firebase settings
-npm run dev
+npx wrangler d1 migrations apply quidsin --local
+npm run build && npx wrangler dev   # site + API on http://localhost:8787
+npm run dev                          # or: UI only, demo mode
 npm test                      # money and reference logic tests
 ```
 
@@ -30,7 +31,7 @@ npm test                      # money and reference logic tests
 ### Option A — GitHub Actions (no Android Studio needed)
 
 1. Push this folder to a GitHub repo (branch `main`).
-2. Put your Firebase settings in `src/firebase-config.ts` (or add them as Actions secrets `VITE_FIREBASE_*`). Optionally add a variable `VITE_PUBLIC_URL` (your website address, used in share links).
+2. Add the Cloudflare secrets from step 1.
 3. Every push builds the APK. Open **Actions → Build Android APK → latest run → Artifacts → QuidsIn-debug-apk**, download and unzip.
 4. On your phone, open the `.apk` and allow "install unknown apps" when asked.
 
@@ -43,9 +44,9 @@ npx cap open android      # then Build → Build APK(s)
 
 The workflow produces a **debug** APK for testing. For the Play Store you'll need a signed release bundle (`./gradlew bundleRelease` with your own keystore).
 
-## 4. Host the web version
+## 4. The web version
 
-`npm run build` outputs `dist/`. Deploy it to Cloudflare Pages (build command `npm run build`, output `dist`).
+The workflow deploys it with the API, at the `workers.dev` address shown in the run summary. You can add your own domain later under the Worker's **Settings → Domains & Routes**.
 
 ## Project layout
 
@@ -53,9 +54,10 @@ The workflow produces a **debug** APK for testing. For the Play Store you'll nee
 | --- | --- |
 | `src/lib/money.ts` | Splits, balances and debt simplification (integer pence) |
 | `src/lib/reference.ts` | Reference generation and clean-up |
-| `src/lib/store.ts` | Firestore store and on-device demo store |
-| `src/firebase-config.ts` | Firebase project settings |
+| `src/lib/store.ts` | API store and on-device demo store |
+| `worker/index.ts` | Cloudflare Worker API |
+| `migrations/` | D1 database schema |
+| `wrangler.toml` | Cloudflare config |
 | `src/App.tsx` | Screens: home, new group, group, add expense |
-| `firebase/firestore.rules` | Firestore security rules |
 | `android/` | Capacitor Android project |
 | `.github/workflows/android.yml` | APK build on GitHub |

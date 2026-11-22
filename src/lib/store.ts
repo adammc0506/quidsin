@@ -1,16 +1,4 @@
-import { initializeApp } from "firebase/app";
-import {
-  arrayUnion,
-  doc,
-  getDoc,
-  getFirestore,
-  onSnapshot,
-  runTransaction,
-  updateDoc,
-  type Firestore,
-} from "firebase/firestore";
-import { firebaseConfig, firebaseConfigured } from "../firebase-config";
-import type { Expense, Group, Member, Settlement, Share } from "./money";
+import type { Expense, Group, Share } from "./money";
 import { generateReference } from "./reference";
 
 export interface NewExpense {
@@ -26,7 +14,7 @@ export interface Store {
   mode: "cloud" | "demo";
   createGroup(name: string, memberNames: string[]): Promise<string>;
   getGroup(reference: string): Promise<Group | null>;
-  /** Live updates where the backend supports them. Returns an unsubscribe function. */
+  /** Keeps a group fresh where the backend supports it. Returns an unsubscribe function. */
   subscribe?(reference: string, onChange: (g: Group | null) => void, onError: (e: Error) => void): () => void;
   addMember(reference: string, name: string): Promise<void>;
   addExpense(reference: string, expense: NewExpense): Promise<void>;
@@ -37,84 +25,105 @@ export interface Store {
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
-/** Newest first, the way the app shows them. */
-function tidy(g: Group): Group {
-  return {
-    ...g,
-    expenses: [...(g.expenses ?? [])].sort((a, b) => b.spentOn.localeCompare(a.spentOn) || b.createdAt.localeCompare(a.createdAt)),
-    settlements: [...(g.settlements ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-  };
-}
+// ---------- Cloudflare Worker + D1 (production) ----------
+// The Worker API lives at /api on the same site, or at VITE_API_URL for the Android app.
+const POLL_MS = 20000;
 
-// ---------- Firebase Firestore (production) ----------
-// One document per group at groups/{reference}. Security rules allow reading a
-// group only by its exact reference (no listing), so the reference is the key.
-class FirebaseStore implements Store {
+class ApiStore implements Store {
   mode = "cloud" as const;
-  private db: Firestore;
-  constructor() {
-    this.db = getFirestore(initializeApp(firebaseConfig));
+  private listeners = new Map<string, Set<() => void>>();
+  private base: string;
+  constructor(base: string) {
+    this.base = base;
   }
-  private ref(reference: string) {
-    return doc(this.db, "groups", reference);
-  }
-  async createGroup(name: string, memberNames: string[]) {
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const reference = generateReference();
-      const created = await runTransaction(this.db, async (tx) => {
-        const snap = await tx.get(this.ref(reference));
-        if (snap.exists()) return false;
-        const group: Group = {
-          reference,
-          name,
-          currency: "GBP",
-          members: memberNames.map((n) => ({ id: uid(), name: n })),
-          expenses: [],
-          settlements: [],
-          createdAt: now(),
-        };
-        tx.set(this.ref(reference), group);
-        return true;
+
+  private async call<T>(path: string, init?: RequestInit): Promise<T> {
+    let res: Response;
+    try {
+      res = await fetch(`${this.base}/api${path}`, {
+        ...init,
+        headers: init?.body ? { "Content-Type": "application/json" } : undefined,
       });
-      if (created) return reference;
+    } catch {
+      throw new Error("Can't reach QuidsIn. Check your internet connection.");
     }
-    throw new Error("Couldn't create a unique reference. Please try again.");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status });
+    return data as T;
+  }
+  private post(path: string, body: unknown) {
+    return this.call(path, { method: "POST", body: JSON.stringify(body) });
+  }
+  /** After our own change, refresh everyone watching that group on this device. */
+  private changed(reference: string) {
+    this.listeners.get(reference)?.forEach((l) => l());
+  }
+  private g(reference: string) {
+    return `/groups/${encodeURIComponent(reference)}`;
+  }
+
+  async createGroup(name: string, memberNames: string[]) {
+    const { reference } = await this.call<{ reference: string }>("/groups", {
+      method: "POST",
+      body: JSON.stringify({ name, members: memberNames }),
+    });
+    return reference;
   }
   async getGroup(reference: string) {
-    const snap = await getDoc(this.ref(reference));
-    return snap.exists() ? tidy(snap.data() as Group) : null;
+    try {
+      return await this.call<Group>(this.g(reference));
+    } catch (e) {
+      if ((e as { status?: number }).status === 404) return null;
+      throw e;
+    }
   }
   subscribe(reference: string, onChange: (g: Group | null) => void, onError: (e: Error) => void) {
-    return onSnapshot(
-      this.ref(reference),
-      (snap) => {
-        // An empty answer from the local cache isn't proof the group doesn't
-        // exist: wait for the server before saying "not found".
-        if (!snap.exists() && snap.metadata.fromCache) return;
-        onChange(snap.exists() ? tidy(snap.data() as Group) : null);
-      },
-      (err) => onError(err),
-    );
+    let stopped = false;
+    let lastJson = "";
+    const refresh = async () => {
+      if (stopped) return;
+      try {
+        const g = await this.getGroup(reference);
+        const j = JSON.stringify(g);
+        if (j !== lastJson) {
+          lastJson = j;
+          onChange(g);
+        }
+      } catch (e) {
+        // Keep showing the last copy if a background refresh fails.
+        if (!lastJson) onError(e as Error);
+      }
+    };
+    const set = this.listeners.get(reference) ?? new Set();
+    set.add(refresh);
+    this.listeners.set(reference, set);
+    // Poll only while the app is on screen, to save the free daily allowance.
+    const timer = setInterval(() => document.visibilityState === "visible" && refresh(), POLL_MS);
+    const onVisible = () => document.visibilityState === "visible" && refresh();
+    document.addEventListener("visibilitychange", onVisible);
+    refresh();
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      set.delete(refresh);
+    };
   }
   async addMember(reference: string, name: string) {
-    const member: Member = { id: uid(), name };
-    await updateDoc(this.ref(reference), { members: arrayUnion(member) });
+    await this.post(`${this.g(reference)}/members`, { name });
+    this.changed(reference);
   }
   async addExpense(reference: string, e: NewExpense) {
-    const expense: Expense = { ...e, id: uid(), createdAt: now() };
-    await updateDoc(this.ref(reference), { expenses: arrayUnion(expense) });
+    await this.post(`${this.g(reference)}/expenses`, e);
+    this.changed(reference);
   }
   async deleteExpense(reference: string, expenseId: string) {
-    await runTransaction(this.db, async (tx) => {
-      const snap = await tx.get(this.ref(reference));
-      if (!snap.exists()) throw new Error("Group not found");
-      const expenses = (snap.data() as Group).expenses.filter((x) => x.id !== expenseId);
-      tx.update(this.ref(reference), { expenses });
-    });
+    await this.call(`${this.g(reference)}/expenses/${encodeURIComponent(expenseId)}`, { method: "DELETE" });
+    this.changed(reference);
   }
   async addSettlement(reference: string, from: string, to: string, amountPence: number) {
-    const s: Settlement = { id: uid(), from, to, amountPence, createdAt: now() };
-    await updateDoc(this.ref(reference), { settlements: arrayUnion(s) });
+    await this.post(`${this.g(reference)}/settlements`, { from, to, amountPence });
+    this.changed(reference);
   }
 }
 
@@ -179,7 +188,10 @@ class DemoStore implements Store {
   }
 }
 
-export const store: Store = firebaseConfigured ? new FirebaseStore() : new DemoStore();
+// VITE_API_URL: "/" for the website (same origin), the full Worker URL for the
+// Android app, or unset for on-device demo mode.
+const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+export const store: Store = apiUrl ? new ApiStore(apiUrl.replace(/\/+$/, "")) : new DemoStore();
 
 // ---------- "My groups" list kept on this device ----------
 export interface RecentGroup {
