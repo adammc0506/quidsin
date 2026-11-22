@@ -183,6 +183,7 @@ function NewDraw() {
   const [wishlists, setWishlists] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [pairs, setPairs] = useState<[string, string][]>([]);
   const clean = people.map((p) => p.trim()).filter(Boolean);
 
   const submit = async (e: FormEvent) => {
@@ -192,6 +193,14 @@ function NewDraw() {
     if (clean.length < 3) return setErr("Add at least 3 people.");
     if (new Set(clean.map((p) => p.toLowerCase())).size !== clean.length)
       return setErr("Two people have the same name. Add a surname initial to tell them apart.");
+    const exclusions: [number, number][] = [];
+    for (const [a, b] of pairs) {
+      if (!a && !b) continue;
+      const i = clean.indexOf(a);
+      const j = clean.indexOf(b);
+      if (i < 0 || j < 0 || i === j) return setErr("Choose two different people for each pair, or remove the pair.");
+      exclusions.push([i, j]);
+    }
     let budgetPence: number | undefined;
     if (budget.trim()) {
       const p = parsePounds(budget);
@@ -206,6 +215,7 @@ function NewDraw() {
         budgetPence,
         exchangeDate: date || undefined,
         wishlists,
+        exclusions: exclusions.length ? exclusions : undefined,
         retentionDays: long ? 90 : 30,
       });
       mine.save({ ref: r.reference, name: name.trim(), admin: r.adminToken });
@@ -242,6 +252,40 @@ function NewDraw() {
           </button>
         </fieldset>
 
+        {clean.length >= 3 && (
+          <fieldset className="field">
+            <legend>Keep some people apart (optional)</legend>
+            <small className="muted">For couples or housemates who shouldn't draw each other. Neither will get the other.</small>
+            {pairs.map(([a, b], i) => (
+              <div className="pair-row" key={i}>
+                <select aria-label={`Pair ${i + 1}, first person`} value={a} onChange={(e) => setPairs(pairs.map((p, j) => (j === i ? [e.target.value, p[1]] : p)))}>
+                  <option value="">Choose…</option>
+                  {clean.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <span aria-hidden="true">and</span>
+                <select aria-label={`Pair ${i + 1}, second person`} value={b} onChange={(e) => setPairs(pairs.map((p, j) => (j === i ? [p[0], e.target.value] : p)))}>
+                  <option value="">Choose…</option>
+                  {clean.filter((n) => n !== a).map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className="link quiet small" aria-label={`Remove pair ${i + 1}`} onClick={() => setPairs(pairs.filter((_, j) => j !== i))}>
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button type="button" className="link" onClick={() => setPairs([...pairs, ["", ""]])} disabled={pairs.length >= 25}>
+              Add a pair to keep apart
+            </button>
+          </fieldset>
+        )}
+
         <div className="pair">
           <label className="field">
             <span>Budget (optional)</span>
@@ -276,7 +320,7 @@ function NewDraw() {
         </label>
 
         <p className="muted small">
-          Names are drawn as soon as you create it. Everyone gets someone else, and no two people simply swap.
+          Names are drawn as soon as you create it. Everyone gets someone else, and no two people simply swap. The pairs you keep apart are used for the draw and not saved.
         </p>
         {err && <p className="error">{err}</p>}
         <button className="btn primary big" disabled={busy}>

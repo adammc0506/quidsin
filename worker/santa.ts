@@ -7,7 +7,7 @@
 //  - The organiser gets a separate key that can free a name tapped by mistake, but never shows the draw.
 //  - Keys are stored as SHA-256 hashes.
 
-import { drawCycle } from "./draw";
+import { drawWithExclusions } from "./draw";
 import { HttpError, body, cleanText, hashToken, json, newReference, newToken, now, refPattern, uid } from "./http";
 import { expiryFor, extend, isExpired, parseRetention } from "./retention";
 
@@ -95,8 +95,19 @@ async function createDraw(env: SantaEnv, req: Request) {
   const retention = parseRetention(b.retentionDays);
   if (!retention) throw new HttpError(400, "Draws can be kept for 30 or 90 days");
 
+  // Pairs who must not draw each other, as positions in the members list. Used for the draw only, never stored.
+  const banned: [number, number][] = [];
+  if (b.exclusions !== undefined && b.exclusions !== null) {
+    if (!Array.isArray(b.exclusions) || b.exclusions.length > 100) throw new HttpError(400, "Too many pairs to keep apart");
+    for (const x of b.exclusions) {
+      const ok = Array.isArray(x) && x.length === 2 && x.every((v) => Number.isInteger(v) && v >= 0 && v < members.length) && x[0] !== x[1];
+      if (!ok) throw new HttpError(400, "Each pair must be two different people in the list");
+      banned.push([x[0], x[1]]);
+    }
+  }
   const ids = members.map(() => uid());
-  const givesTo = drawCycle(members.length);
+  const givesTo = drawWithExclusions(members.length, banned);
+  if (!givesTo) throw new HttpError(400, "Those pairs leave no way to draw everyone. Remove one or two pairs and try again.");
   const adminToken = newToken();
   const adminHash = await hashToken(adminToken);
   const did = uid();

@@ -26,7 +26,7 @@ const call = <T>(path: string, init?: RequestInit) => callApi<T>("santa", path, 
 const post = <T>(path: string, data: unknown) => call<T>(path, { method: "POST", body: JSON.stringify(data) });
 
 export const api = {
-  create: (d: { name: string; members: string[]; budgetPence?: number; exchangeDate?: string; wishlists: boolean; retentionDays: 30 | 90 }) =>
+  create: (d: { name: string; members: string[]; budgetPence?: number; exchangeDate?: string; wishlists: boolean; exclusions?: [number, number][]; retentionDays: 30 | 90 }) =>
     post<{ reference: string; adminToken: string }>("/draws", d),
   draw: (ref: string) => call<Draw>(`/draws/${encodeURIComponent(ref)}`),
   claim: (ref: string, personId: string) => post<{ token: string }>(`/draws/${encodeURIComponent(ref)}/claim`, { personId }),

@@ -168,3 +168,5 @@ textarea { resize: vertical; line-height: 1.45; }
 @media (min-width: 640px) {
   .hero { border-radius: 0 0 28px 28px; }
 }
+.pair-row { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 8px; align-items: center; }
+.pair-row span { color: var(--muted); font-size: 0.9rem; }
