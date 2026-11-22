@@ -12,6 +12,7 @@ import {
 } from "./lib/money";
 import { normaliseReference } from "./lib/reference";
 import { forgetGroup, getRecent, rememberGroup, store } from "./lib/store";
+import { Guilloche, TornNote } from "./Note";
 
 // ---------- tiny router ----------
 // Kept in memory and mirrored to the URL hash where the host allows it
@@ -96,9 +97,9 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <Link to="/" className="logo">
-          <span className="logo-mark">£</span>QuidsIn
+          Quids<span>In</span>
         </Link>
-        {store.mode === "demo" && <span className="pill warn">Demo mode</span>}
+        {store.mode === "demo" && <span className="pill">Demo mode</span>}
       </header>
       <main>{screen}</main>
     </div>
@@ -119,18 +120,20 @@ function Home() {
   return (
     <div className="stack">
       <section className="hero">
-        <h1>Split it. Sorted.</h1>
-        <p>Share one reference, everyone's in. No app store, no sign-up, no daily limits.</p>
+        <TornNote />
+        <h1>Who owes what, sorted.</h1>
+        <p className="lede">One reference for the whole group. No sign-up, no app store, no limit on expenses.</p>
         <button className="btn primary big" onClick={() => go("/new")}>
-          Start a new split
+          Start a split
         </button>
       </section>
 
-      <form className="card" onSubmit={join}>
-        <h2>Got a reference?</h2>
+      <form className="join" onSubmit={join}>
+        <label htmlFor="join-ref">Joining a group? Enter its reference.</label>
         <div className="row">
           <input
-            aria-label="Group reference"
+            id="join-ref"
+            className="serial-input"
             placeholder="QI-XXXX-XXXX"
             value={code}
             onChange={(e) => {
@@ -138,6 +141,8 @@ function Home() {
               setErr("");
             }}
             autoCapitalize="characters"
+            autoComplete="off"
+            spellCheck={false}
           />
           <button className="btn">Join</button>
         </div>
@@ -145,14 +150,14 @@ function Home() {
       </form>
 
       {recent.length > 0 && (
-        <section className="card">
+        <section>
           <h2>Your groups</h2>
-          <ul className="list">
+          <ul className="rows">
             {recent.map((g) => (
               <li key={g.reference}>
-                <Link to={`/g/${g.reference}`} className="list-link">
+                <Link to={`/g/${g.reference}`} className="row-link">
                   <span>{g.name}</span>
-                  <span className="muted mono">{g.reference}</span>
+                  <span className="serial small">{g.reference}</span>
                 </Link>
               </li>
             ))}
@@ -161,7 +166,7 @@ function Home() {
       )}
 
       {store.mode === "demo" && (
-        <p className="muted small center">
+        <p className="muted small">
           Demo mode: groups are saved on this device only. Connect it to Cloudflare to share groups between phones.
         </p>
       )}
@@ -193,13 +198,14 @@ function NewGroup() {
   };
   return (
     <form className="stack" onSubmit={create}>
-      <h1>New split</h1>
+      <h1>Start a split</h1>
       <label className="field">
         <span>Group name</span>
         <input placeholder="Mallorca 2027" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </label>
       <fieldset className="field">
         <span>Who's in?</span>
+        <small className="muted">Just first names. You can add people later.</small>
         {members.map((m, i) => (
           <input
             key={i}
@@ -209,7 +215,7 @@ function NewGroup() {
           />
         ))}
         <button type="button" className="btn ghost" onClick={() => setMembers([...members, ""])}>
-          + Add another person
+          Add another person
         </button>
       </fieldset>
       {err && <p className="error">{err}</p>}
@@ -292,7 +298,7 @@ function PickMe({ group, onPick, onAdded }: { group: Group; onPick: (id: string)
   return (
     <div className="stack">
       <h1>{group.name}</h1>
-      <p>Which one are you?</p>
+      <p className="lede">Which one are you? This phone will remember.</p>
       <div className="chips">
         {group.members.map((m) => (
           <button key={m.id} className="btn chip" onClick={() => onPick(m.id)}>
@@ -311,7 +317,12 @@ function PickMe({ group, onPick, onAdded }: { group: Group; onPick: (id: string)
           onAdded();
         }}
       >
-        <input placeholder="Not listed? Add your name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+        <input
+          aria-label="Your name"
+          placeholder="Not listed? Add your name"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+        />
         <button className="btn">Add</button>
       </form>
     </div>
@@ -364,16 +375,20 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
 
   return (
     <div className="stack">
-      <section className="group-head">
-        <h1>{group.name}</h1>
-        <button className="ref" onClick={share} title="Share reference">
-          <span className="mono">{group.reference}</span>
-          <span className="small">{copied ? "Copied" : "Share"}</span>
-        </button>
-        <div className={`summary ${myBalance > 0 ? "pos" : myBalance < 0 ? "neg" : ""}`}>
-          {myBalance > 0 ? `You're owed ${fmt(myBalance)}` : myBalance < 0 ? `You owe ${fmt(-myBalance)}` : "You're all square"}
-          <span className="muted small">Group total {fmt(groupTotal(group))}</span>
+      <section className="note" aria-label={`${group.name} summary`}>
+        <Guilloche className="note-art" />
+        <div className="note-top">
+          <h1>{group.name}</h1>
+          <span className="serial">{group.reference}</span>
         </div>
+        <p className="note-label">{myBalance > 0 ? "You're owed" : myBalance < 0 ? "You owe" : "You're all square"}</p>
+        <p className="note-amount">{fmt(Math.abs(myBalance))}</p>
+        <p className="note-meta">
+          {fmt(groupTotal(group))} spent by {group.members.length} people
+        </p>
+        <button className="note-share" onClick={share}>
+          {copied ? "Reference copied" : "Share reference"}
+        </button>
       </section>
 
       <nav className="tabs">
@@ -391,46 +406,57 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
       {tab === "expenses" && (
         <section>
           {group.expenses.length === 0 ? (
-            <p className="muted center">No expenses yet. Add the first one.</p>
+            <p className="empty">Nothing added yet. Add the first expense and share the reference so everyone can see it.</p>
           ) : (
-            <ul className="list">
-              {group.expenses.map((e) => (
-                <li key={e.id} className="expense">
-                  <div>
-                    <strong>{e.description}</strong>
-                    <span className="muted small">
-                      {name(e.paidBy)} paid · {new Date(e.spentOn).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            <ul className="rows">
+              {group.expenses.map((e) => {
+                const mine = e.shares.find((x) => x.memberId === me)?.pence ?? 0;
+                const net = (e.paidBy === me ? e.amountPence : 0) - mine;
+                const d = new Date(e.spentOn + "T12:00:00");
+                return (
+                  <li key={e.id} className="expense-row">
+                    <span className="date">
+                      <b>{d.getDate()}</b>
+                      {d.toLocaleDateString("en-GB", { month: "short" })}
                     </span>
-                  </div>
-                  <div className="right">
-                    <strong>{fmt(e.amountPence)}</strong>
-                    <button
-                      className="link danger small"
-                      onClick={async () => {
-                        // Two taps instead of window.confirm, which is blocked in some web views.
-                        if (pendingDelete !== e.id) return setPendingDelete(e.id);
-                        setPendingDelete(null);
-                        await store.deleteExpense(group.reference, e.id);
-                        reload();
-                      }}
-                    >
-                      {pendingDelete === e.id ? "Tap again to delete" : "Delete"}
-                    </button>
-                  </div>
-                </li>
-              ))}
+                    <span className="what">
+                      <strong>{e.description}</strong>
+                      <span className="small muted">{e.paidBy === me ? "You paid" : `${name(e.paidBy)} paid`}</span>
+                    </span>
+                    <span className="sums">
+                      <span className="money">{fmt(e.amountPence)}</span>
+                      <span className={`small ${net > 0 ? "pos" : net < 0 ? "neg" : "muted"}`}>
+                        {net > 0 ? `you lent ${fmt(net)}` : net < 0 ? `you owe ${fmt(-net)}` : "not involved"}
+                      </span>
+                      <button
+                        className={`link small ${pendingDelete === e.id ? "danger" : "quiet"}`}
+                        aria-label={pendingDelete === e.id ? `Confirm delete ${e.description}` : `Delete ${e.description}`}
+                        onClick={async () => {
+                          // Two taps instead of window.confirm, which is blocked in some web views.
+                          if (pendingDelete !== e.id) return setPendingDelete(e.id);
+                          setPendingDelete(null);
+                          await store.deleteExpense(group.reference, e.id);
+                          reload();
+                        }}
+                      >
+                        {pendingDelete === e.id ? "Tap again to delete" : "Delete"}
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {group.settlements.length > 0 && (
             <>
-              <h3 className="muted small">Payments recorded</h3>
-              <ul className="list">
+              <h2 className="minor">Payments recorded</h2>
+              <ul className="rows">
                 {group.settlements.map((s) => (
-                  <li key={s.id} className="expense muted">
+                  <li key={s.id} className="simple-row muted">
                     <span>
-                      {name(s.from)} paid {name(s.to)}
+                      {name(s.from)} paid {s.to === me ? "you" : name(s.to)}
                     </span>
-                    <span>{fmt(s.amountPence)}</span>
+                    <span className="money">{fmt(s.amountPence)}</span>
                   </li>
                 ))}
               </ul>
@@ -441,15 +467,22 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
 
       {tab === "balances" && (
         <section>
-          <ul className="list">
+          <ul className="rows balance-chart">
             {group.members.map((m) => {
               const b = balances.get(m.id) ?? 0;
+              const max = Math.max(1, ...[...balances.values()].map(Math.abs));
+              const w = `${(Math.abs(b) / max) * 50}%`;
               return (
-                <li key={m.id} className="expense">
-                  <span>{name(m.id)}</span>
-                  <span className={b > 0 ? "pos" : b < 0 ? "neg" : "muted"}>
-                    {b > 0 ? `gets back ${fmt(b)}` : b < 0 ? `owes ${fmt(-b)}` : "square"}
-                  </span>
+                <li key={m.id} className="balance-row">
+                  <div className="balance-text">
+                    <span>{m.id === me ? `${m.name} (you)` : m.name}</span>
+                    <span className={`money ${b > 0 ? "pos" : b < 0 ? "neg" : "muted"}`}>
+                      {b > 0 ? `gets back ${fmt(b)}` : b < 0 ? `owes ${fmt(-b)}` : "square"}
+                    </span>
+                  </div>
+                  <div className="bar-track" aria-hidden="true">
+                    <span className={`bar ${b >= 0 ? "pos" : "neg"}`} style={{ width: w }} />
+                  </div>
                 </li>
               );
             })}
@@ -461,21 +494,24 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
       {tab === "settle" && (
         <section>
           {transfers.length === 0 ? (
-            <p className="muted center">Everyone's square. Nothing to settle.</p>
+            <p className="empty">Everyone's square. Nothing to settle.</p>
           ) : (
             <>
-              <p className="muted small">The fewest payments to clear every debt:</p>
-              <ul className="list">
+              <p className="lede small">
+                {transfers.length === 1 ? "One payment clears everything." : `${transfers.length} payments clear everything.`} Mark each one
+                paid once the money has moved.
+              </p>
+              <ul className="rows">
                 {transfers.map((t, i) => (
-                  <li key={i} className="expense">
+                  <li key={i} className="simple-row">
                     <span>
                       <strong>{name(t.from)}</strong> pay{t.from === me ? "" : "s"}{" "}
                       <strong>{t.to === me ? "you" : name(t.to)}</strong>
                     </span>
-                    <span className="right">
-                      <strong>{fmt(t.amountPence)}</strong>
+                    <span className="sums">
+                      <span className="money">{fmt(t.amountPence)}</span>
                       <button
-                        className="link small"
+                        className="btn small-btn"
                         onClick={async () => {
                           await store.addSettlement(group.reference, t.from, t.to, t.amountPence);
                           reload();
@@ -493,8 +529,8 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
         </section>
       )}
 
-      <button className="fab" onClick={() => go(`/g/${group.reference}/add`)} aria-label="Add expense">
-        + Add expense
+      <button className="fab" onClick={() => go(`/g/${group.reference}/add`)}>
+        Add expense
       </button>
     </div>
   );
@@ -582,30 +618,31 @@ function AddExpense({ group, me, onSaved }: { group: Group; me: string; onSaved:
           Cancel
         </Link>
       </div>
+      <label className="amount-field">
+        <span className="visually-hidden">Amount in pounds</span>
+        <span className="amount-sign" aria-hidden="true">£</span>
+        <input inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
+      </label>
       <label className="field">
         <span>What for?</span>
-        <input placeholder="Dinner at the harbour" value={description} onChange={(e) => setDescription(e.target.value)} autoFocus />
+        <input placeholder="Dinner at the harbour" value={description} onChange={(e) => setDescription(e.target.value)} />
       </label>
       <div className="row">
         <label className="field grow">
-          <span>Amount (£)</span>
-          <input inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <span>Paid by</span>
+          <select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
+            {group.members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.id === me ? `${m.name} (you)` : m.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="field">
           <span>Date</span>
           <input type="date" value={spentOn} onChange={(e) => setSpentOn(e.target.value)} />
         </label>
       </div>
-      <label className="field">
-        <span>Paid by</span>
-        <select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
-          {group.members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.id === me ? `${m.name} (you)` : m.name}
-            </option>
-          ))}
-        </select>
-      </label>
 
       <div className="field">
         <span>Split</span>
@@ -613,7 +650,7 @@ function AddExpense({ group, me, onSaved }: { group: Group; me: string; onSaved:
           {(
             [
               ["equal", "Equally"],
-              ["exact", "Exact £"],
+              ["exact", "Exact amounts"],
               ["shares", "Shares"],
             ] as [Mode, string][]
           ).map(([id, label]) => (
@@ -624,9 +661,9 @@ function AddExpense({ group, me, onSaved }: { group: Group; me: string; onSaved:
         </div>
       </div>
 
-      <ul className="list">
+      <ul className="rows">
         {group.members.map((m) => (
-          <li key={m.id} className="expense">
+          <li key={m.id} className="simple-row">
             {mode === "equal" ? (
               <label className="check">
                 <input
@@ -661,7 +698,7 @@ function AddExpense({ group, me, onSaved }: { group: Group; me: string; onSaved:
                 onChange={(e) => setWeights({ ...weights, [m.id]: e.target.value })}
               />
             )}
-            {mode !== "exact" && <span className="muted small">{preview?.get(m.id) ? fmt(preview.get(m.id)!) : "—"}</span>}
+            {mode !== "exact" && <span className="money muted">{preview?.get(m.id) ? fmt(preview.get(m.id)!) : "–"}</span>}
           </li>
         ))}
       </ul>
