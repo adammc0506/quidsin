@@ -1,0 +1,39 @@
+/* League — navy table with a gold leader and ruled rows. */
+@import "../lib/base.css";
+:root {
+  --slate: #0f3d5e;
+  --slate-2: #0a2a42;
+  --page: #eef3f7;
+  --rule: #d3dee7;
+  --muted: #55657a;
+  --chalk-gold: #f2c94c;
+}
+.lg { background: var(--slate); color: #f4f0e4; border-radius: 18px; padding: 20px 8px 10px; }
+.lg-head { padding: 0 10px 10px; }
+.lg-head h1 { font-size: 1.7rem; }
+.lg-head p { opacity: 0.7; font-size: 0.88rem; margin-top: 2px; }
+.scroll { overflow-x: auto; }
+.lt { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.lt th, .lt td { padding: 10px 5px; text-align: center; font-weight: 500; border-top: 1px dashed rgba(244, 240, 228, 0.25); }
+.lt thead th { border-top: 0; font-size: 0.78rem; opacity: 0.7; padding-bottom: 6px; }
+.lt .pos { width: 28px; opacity: 0.6; font-family: var(--serif); }
+.lt .tm { text-align: left; font-weight: 620; font-size: 1rem; min-width: 7.5em; overflow-wrap: anywhere; }
+.lt .pts { font-family: var(--serif); font-size: 1.3rem; padding-right: 10px; }
+.lt tr.lead .pos, .lt tr.lead .pts { color: var(--chalk-gold); opacity: 1; }
+.lt tr.lead .tm { box-shadow: inset 0 -2px 0 var(--chalk-gold); }
+.fxcard { align-items: stretch; }
+.fxcard ul { display: flex; flex-direction: column; }
+.fxcard li + li { border-top: 1px solid var(--rule); }
+.fx { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; width: 100%; min-height: 50px; padding: 6px 0; background: none; border: 0; font: inherit; color: inherit; text-align: left; }
+button.fx { cursor: pointer; }
+.fx .side { font-weight: 600; overflow-wrap: anywhere; }
+.fx .side.r { text-align: right; }
+.fx .mid { font-family: var(--serif); font-variant-numeric: tabular-nums; color: var(--slate); padding: 0 4px; }
+.entry-card { align-items: stretch; border-color: var(--slate); }
+.score-in { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
+.score-in label { display: flex; flex-direction: column; gap: 6px; }
+.score-in label > span { font-weight: 620; font-size: 0.92rem; overflow-wrap: anywhere; }
+.score-in input { font-family: var(--serif); font-size: 1.4rem; text-align: center; }
+select { font: inherit; width: 100%; min-height: 48px; padding: 0 12px; border: 1.5px solid var(--rule); border-radius: 12px; background: var(--paper); color: var(--ink); }
+.rowbtns { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+form.card { align-items: stretch; }

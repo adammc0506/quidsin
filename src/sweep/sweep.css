@@ -1,0 +1,27 @@
+/* Sweepstake — pitch green with cream tickets and a gold winner. */
+@import "../lib/base.css";
+:root {
+  --slate: #14532d;
+  --slate-2: #0d3a1f;
+  --page: #f1f5ef;
+  --rule: #d6e0d3;
+  --muted: #55645a;
+  --chalk-gold: #f2c94c;
+}
+.draw { background: var(--slate); color: #f6efd8; border-radius: 18px; padding: 20px 14px 8px; }
+.draw-head { padding: 0 6px 12px; }
+.draw-head h1 { font-size: 1.7rem; }
+.draw-head p { opacity: 0.8; font-size: 0.92rem; margin-top: 4px; }
+.winners { margin: 0 6px 12px; padding: 10px 12px; border-radius: 10px; background: var(--chalk-gold); color: var(--slate-2); font-weight: 650; }
+.people-draw { display: flex; flex-direction: column; }
+.people-draw li { padding: 12px 6px; border-top: 1px dashed rgba(246, 239, 216, 0.28); display: flex; flex-direction: column; gap: 8px; }
+.people-draw .who { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.people-draw .who strong { font-size: 1.1rem; overflow-wrap: anywhere; }
+.people-draw .who .muted { color: rgba(246, 239, 216, 0.65); }
+.people-draw li.dead strong { opacity: 0.55; }
+.chipset { display: flex; flex-wrap: wrap; gap: 8px; }
+.chipitem { font: inherit; font-weight: 620; padding: 7px 12px; min-height: 36px; border-radius: 8px; border: 0; background: #f6efd8; color: var(--slate-2); }
+button.chipitem { cursor: pointer; min-height: 44px; }
+.chipitem.out { background: transparent; color: rgba(246, 239, 216, 0.6); text-decoration: line-through; box-shadow: inset 0 0 0 1.5px rgba(246, 239, 216, 0.3); }
+.chipitem.won { background: var(--chalk-gold); box-shadow: 0 0 0 3px rgba(242, 201, 76, 0.4); }
+textarea { min-height: 120px; }

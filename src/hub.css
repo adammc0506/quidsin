@@ -114,3 +114,9 @@ a.item:hover .open.pickers { background: #0a4d49; }
 .mine a strong { overflow-wrap: anywhere; }
 .mine .tool { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
 .mine .tool.keeper { color: #0b7a68; font-weight: 620; }
+.open.sweep { background: #14532d; }
+a.item:hover .open.sweep { background: #0d3a1f; }
+.open.quiz { background: #4a2a7a; }
+a.item:hover .open.quiz { background: #321b57; }
+.open.league { background: #0f3d5e; }
+a.item:hover .open.league { background: #0a2a42; }

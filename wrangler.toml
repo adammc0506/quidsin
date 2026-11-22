@@ -53,3 +53,24 @@ database_name = "killer"
 # Created 22 Nov 2026 (Western Europe).
 database_id = "043f9b69-6ac6-4ef6-8c71-23f652df7283"
 migrations_dir = "migrations-killer"
+
+[[d1_databases]]
+binding = "SWEEP"
+database_name = "sweep"
+# Created 22 Nov 2026 (Western Europe).
+database_id = "e3a06d84-59d4-4432-90e8-929e66d4751a"
+migrations_dir = "migrations-sweep"
+
+[[d1_databases]]
+binding = "QUIZ"
+database_name = "quiz"
+# Created 22 Nov 2026 (Western Europe).
+database_id = "792d3f0e-7495-4bc3-aef9-c88ce737e896"
+migrations_dir = "migrations-quiz"
+
+[[d1_databases]]
+binding = "LEAGUE"
+database_name = "league"
+# Created 22 Nov 2026 (Western Europe).
+database_id = "91383961-c6c6-4137-972d-542d9751e7db"
+migrations_dir = "migrations-league"

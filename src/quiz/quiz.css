@@ -1,0 +1,40 @@
+/* Quiz night — plum chalkboard, amber leader. */
+@import "../lib/base.css";
+:root {
+  --slate: #4a2a7a;
+  --slate-2: #321b57;
+  --page: #f4f0f8;
+  --rule: #dcd3e8;
+  --muted: #61586f;
+  --chalk-gold: #f2c94c;
+}
+.lb { background: var(--slate); color: #f7f1e3; border-radius: 18px; padding: 20px 14px 10px; }
+.lb-head { padding: 0 6px 12px; }
+.lb-head h1 { font-size: 1.7rem; }
+.lb-head p { opacity: 0.7; font-size: 0.88rem; margin-top: 2px; }
+.lb-rows li { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; min-height: 60px; padding: 6px; border-top: 1px dashed rgba(247, 241, 227, 0.28); }
+.lb-rows .rank { font-family: var(--serif); opacity: 0.6; }
+.lb-rows .tname { font-size: 1.12rem; font-weight: 620; overflow-wrap: anywhere; }
+.lb-rows .tscore { font-family: var(--serif); font-variant-numeric: lining-nums tabular-nums; font-size: 2rem; line-height: 1; }
+.lb-rows li.lead .rank, .lb-rows li.lead .tscore { color: var(--chalk-gold); opacity: 1; }
+.lb-rows li.lead .tname { box-shadow: 0 2px 0 var(--chalk-gold); justify-self: start; }
+.entry-card { align-items: stretch; border-color: var(--slate); }
+.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.tab { flex: none; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1.5px solid var(--rule); background: var(--paper); font: inherit; font-weight: 620; color: var(--ink); cursor: pointer; }
+.tab.on { background: var(--slate); border-color: var(--slate); color: #fff; }
+.entries li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; }
+.entries li + li { border-top: 1px solid var(--rule); }
+.entries .tn { font-weight: 620; overflow-wrap: anywhere; flex: 1; min-width: 0; }
+.entry { display: flex; gap: 6px; align-items: center; }
+.entry input { width: 74px; text-align: center; font-family: var(--serif); font-size: 1.25rem; padding: 8px; }
+.small-chip { min-height: 46px; min-width: 50px; font-size: 1rem; padding: 0 8px; }
+.stepper { display: flex; align-items: center; gap: 14px; }
+.stepper output { font-family: var(--serif); font-size: 1.5rem; min-width: 2ch; text-align: center; }
+.stepper .btn { min-width: 52px; font-size: 1.4rem; padding: 0; }
+.rowbtns { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.gridcard { align-items: stretch; padding: 14px 16px; }
+.gridcard summary { font-weight: 620; cursor: pointer; min-height: 32px; }
+.scroll { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; font-size: 0.92rem; min-width: 100%; }
+th, td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--rule); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th[scope="row"], thead th:first-child { text-align: left; position: sticky; left: 0; background: var(--paper); }
