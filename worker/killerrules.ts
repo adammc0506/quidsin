@@ -49,6 +49,7 @@ export function decide(rules: Rules, ps: P[], a: Action): Outcome {
     if (!rules.scratchLoses) return { error: "Scratches don't cost a life in this game" };
     return { kind: "scratch", shooterId: s.id, livesPlayerId: s.id, livesDelta: -1 };
   }
+  if (a.type !== "pot") return { error: "Unknown action" };
   const v = find(a.victimId);
   if (!v) return { error: "That player isn't in this game" };
   if (v.id === s.id) return { error: "Use “potted their own ball” for that" };
