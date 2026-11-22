@@ -9,6 +9,7 @@
   --serif: "Young Serif", Georgia, serif;
   --sans: "Schibsted Grotesk Variable", "Schibsted Grotesk", system-ui, sans-serif;
   font-family: var(--sans);
+  font-variant-numeric: lining-nums;
   font-size: 16px;
   line-height: 1.5;
   color: var(--ink);
@@ -76,3 +77,9 @@ a.item .name { text-decoration: underline; text-decoration-color: var(--amber); 
   .receipt { animation: none; }
   a.item { transition: none; }
 }
+
+.open {
+  grid-column: 1 / -1; justify-self: start; margin-top: 10px; padding: 8px 16px; border-radius: 999px;
+  background: #4b2e83; color: #fff; font-weight: 620; font-size: 0.9rem;
+}
+a.item:hover .open { background: #3a2366; }

@@ -13,6 +13,7 @@
   --serif: "Young Serif", Georgia, serif;
   --sans: "Schibsted Grotesk Variable", "Schibsted Grotesk", system-ui, sans-serif;
   font-family: var(--sans);
+  font-variant-numeric: lining-nums; /* Young Serif defaults to old-style figures, which are hard to scan for money */
   font-size: 16px;
   line-height: 1.5;
   color: var(--ink);
@@ -21,6 +22,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; }
 h1, h2, p { margin: 0; }
 h1 { font-family: var(--serif); font-weight: 400; font-size: 1.75rem; line-height: 1.15; letter-spacing: -0.01em; }
@@ -34,7 +36,7 @@ strong { font-weight: 620; }
 .neg { color: var(--owe); }
 .error { color: var(--owe); font-size: 0.92rem; }
 .empty { color: var(--muted); padding: 28px 4px; max-width: 34ch; }
-.money { font-family: var(--serif); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.money { font-family: var(--serif); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
 .serial { font-family: var(--serif); letter-spacing: 0.08em; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -91,7 +93,14 @@ fieldset.field small { margin-top: -4px; }
 .simple-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px; min-height: 56px; }
 .sums { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
 
-.expense-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; padding: 14px 2px; align-items: start; }
+.expense-row {
+  display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; padding: 14px 2px; align-items: start;
+  width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; cursor: pointer;
+}
+.expense-row:active { background: rgba(75, 46, 131, 0.05); }
+.expense-detail { padding: 0 2px 14px 54px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.expense-detail ul { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 4px; }
+.expense-detail li { display: flex; justify-content: space-between; gap: 12px; font-size: 0.92rem; }
 .date { display: flex; flex-direction: column; align-items: center; font-size: 0.74rem; color: var(--muted); line-height: 1.1; padding-top: 2px; }
 .date b { font-family: var(--serif); font-weight: 400; font-size: 1.25rem; color: var(--ink); }
 .what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -136,7 +145,7 @@ fieldset.field small { margin-top: -4px; }
 .note-top h1 { font-size: 1.3rem; overflow-wrap: anywhere; }
 .note-top .serial { font-size: 0.8rem; opacity: 0.9; white-space: nowrap; }
 .note-label { margin-top: 26px; font-size: 0.95rem; opacity: 0.85; }
-.note-amount { font-family: var(--serif); font-size: 3rem; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.note-amount { font-family: var(--serif); font-size: 3rem; line-height: 1.05; font-variant-numeric: lining-nums tabular-nums; }
 .note-meta { margin-top: 6px; font-size: 0.86rem; opacity: 0.8; }
 .note-share {
   margin-top: 16px; font: inherit; font-weight: 620; font-size: 0.9rem; color: #fff; cursor: pointer;
@@ -208,3 +217,22 @@ input.mini { width: 104px; min-height: 42px; padding: 8px 10px; text-align: righ
 .keep { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; font-size: 0.88rem; color: var(--muted); margin-top: -6px; }
 .keep.warn { color: var(--owe); background: #fbeff1; border: 1px solid #efc7cf; border-radius: 10px; padding: 10px 12px; margin-top: 0; }
 .keep .btn { border-color: currentColor; color: inherit; }
+
+/* ---------- calmer retention line, empty state, how it works ---------- */
+.note-keep { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 0.84rem; opacity: 0.9; }
+.note-link { font: inherit; font-weight: 620; color: #fff; background: none; border: 0; padding: 4px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.note-link:focus-visible { outline-color: #fff; }
+.keep { margin-top: 0; }
+.empty-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 22px 18px; margin-top: 12px;
+  border: 1.5px dashed var(--rule); border-radius: 14px; background: var(--sheet);
+}
+.empty-card strong { font-family: var(--serif); font-weight: 400; font-size: 1.25rem; }
+.empty-card .btn { margin-top: 10px; }
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; }
+.steps li { counter-increment: step; display: grid; grid-template-columns: 34px 1fr; column-gap: 8px; padding: 12px 0; border-top: 1px solid var(--rule); }
+.steps li::before { content: counter(step); grid-row: span 2; font-family: var(--serif); font-size: 1.5rem; line-height: 1.1; color: var(--note); }
+.steps li span { color: var(--muted); font-size: 0.92rem; }
+.family { padding-top: 4px; }
+.family a { color: var(--note); font-weight: 620; }
+select, input[type="date"] { height: 48px; }

@@ -80,9 +80,10 @@ function setMe(ref: string, id: string) {
   }
 }
 
+// Inside the Android app the page is served from https://localhost, which is no use to friends.
+const isWebHost = window.location.protocol.startsWith("http") && window.location.hostname !== "localhost";
+
 const shareUrl = (ref: string) => {
-  // Inside the Android app the page is served from https://localhost, which is no use to friends.
-  const isWebHost = window.location.protocol.startsWith("http") && window.location.hostname !== "localhost";
   const base = import.meta.env.VITE_PUBLIC_URL || (isWebHost ? window.location.origin + window.location.pathname : "");
   return base ? `${base.replace(/\/$/, "")}/#/g/${ref}` : ref;
 };
@@ -148,6 +149,31 @@ function Home() {
         </div>
         {err && <p className="error">{err}</p>}
       </form>
+
+      <section aria-labelledby="how">
+        <h2 id="how">How it works</h2>
+        <ol className="steps">
+          <li>
+            <strong>Start a split</strong>
+            <span>Name the group and add everyone's first name.</span>
+          </li>
+          <li>
+            <strong>Share the reference</strong>
+            <span>Friends open your link or type the reference. No accounts.</span>
+          </li>
+          <li>
+            <strong>Add expenses as you go</strong>
+            <span>QuidsIn works out who owes who, using the fewest payments.</span>
+          </li>
+        </ol>
+      </section>
+
+      {isWebHost && (
+        <p className="small muted family">
+          QuidsIn is a free <a href="/">Tab &amp; Tally</a> tool. Groups are deleted after 30 days, or 3 months if you
+          choose.
+        </p>
+      )}
 
       {recent.length > 0 && (
         <section>
@@ -351,6 +377,7 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
   const myBalance = balances.get(me) ?? 0;
   const [copied, setCopied] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [extendErr, setExtendErr] = useState("");
   const fmt = (p: number) => formatPence(p, group.currency);
   const expiry = group.expiresAt ? new Date(group.expiresAt) : null;
@@ -423,23 +450,31 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
         <button className="note-share" onClick={share}>
           {copied ? "Reference copied" : "Share reference"}
         </button>
+        {expiry && daysLeft !== null && daysLeft > 7 && (
+          <p className="note-keep">
+            <span>Deletes on {expiryText}</span>
+            {group.canExtend && (
+              <button className="note-link" onClick={keepMore}>
+                Keep another month
+              </button>
+            )}
+          </p>
+        )}
       </section>
 
-      {expiry && daysLeft !== null && (
-        <div className={`keep${daysLeft <= 7 ? " warn" : ""}`} role={daysLeft <= 7 ? "status" : undefined}>
+      {expiry && daysLeft !== null && daysLeft <= 7 && (
+        <div className="keep warn" role="status">
           <p>
-            {daysLeft <= 7
-              ? `Deletes ${daysLeft <= 1 ? "tomorrow" : `in ${daysLeft} days`} (${expiryText}). Settle up or note your figures.`
-              : `Deletes on ${expiryText}`}
+            Deletes {daysLeft <= 1 ? "tomorrow" : `in ${daysLeft} days`} ({expiryText}). Settle up or note your figures.
           </p>
           {group.canExtend && (
             <button className="btn small-btn" onClick={keepMore}>
               Keep another month
             </button>
           )}
-          {extendErr && <p className="error">{extendErr}</p>}
         </div>
       )}
+      {extendErr && <p className="error">{extendErr}</p>}
 
       <nav className="tabs">
         {[
@@ -456,42 +491,73 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
       {tab === "expenses" && (
         <section>
           {group.expenses.length === 0 ? (
-            <p className="empty">Nothing added yet. Add the first expense and share the reference so everyone can see it.</p>
+            <div className="empty-card">
+              <strong>No expenses yet</strong>
+              <p className="muted">Add the first one, then share the reference so everyone can see it.</p>
+              <button className="btn primary" onClick={() => go(`/g/${group.reference}/add`)}>
+                Add the first expense
+              </button>
+            </div>
           ) : (
             <ul className="rows">
               {group.expenses.map((e) => {
                 const mine = e.shares.find((x) => x.memberId === me)?.pence ?? 0;
                 const net = (e.paidBy === me ? e.amountPence : 0) - mine;
                 const d = new Date(e.spentOn + "T12:00:00");
+                const open = openId === e.id;
+                const parts = e.shares.filter((x) => x.pence > 0);
                 return (
-                  <li key={e.id} className="expense-row">
-                    <span className="date">
-                      <b>{d.getDate()}</b>
-                      {d.toLocaleDateString("en-GB", { month: "short" })}
-                    </span>
-                    <span className="what">
-                      <strong>{e.description}</strong>
-                      <span className="small muted">{e.paidBy === me ? "You paid" : `${name(e.paidBy)} paid`}</span>
-                    </span>
-                    <span className="sums">
-                      <span className="money">{fmt(e.amountPence)}</span>
-                      <span className={`small ${net > 0 ? "pos" : net < 0 ? "neg" : "muted"}`}>
-                        {net > 0 ? `you lent ${fmt(net)}` : net < 0 ? `you owe ${fmt(-net)}` : "not involved"}
+                  <li key={e.id} className="expense">
+                    <button
+                      className="expense-row"
+                      aria-expanded={open}
+                      onClick={() => {
+                        setOpenId(open ? null : e.id);
+                        setPendingDelete(null);
+                      }}
+                    >
+                      <span className="date">
+                        <b>{d.getDate()}</b>
+                        {d.toLocaleDateString("en-GB", { month: "short" })}
                       </span>
-                      <button
-                        className={`link small ${pendingDelete === e.id ? "danger" : "quiet"}`}
-                        aria-label={pendingDelete === e.id ? `Confirm delete ${e.description}` : `Delete ${e.description}`}
-                        onClick={async () => {
-                          // Two taps instead of window.confirm, which is blocked in some web views.
-                          if (pendingDelete !== e.id) return setPendingDelete(e.id);
-                          setPendingDelete(null);
-                          await store.deleteExpense(group.reference, e.id);
-                          reload();
-                        }}
-                      >
-                        {pendingDelete === e.id ? "Tap again to delete" : "Delete"}
-                      </button>
-                    </span>
+                      <span className="what">
+                        <strong>{e.description}</strong>
+                        <span className="small muted">{e.paidBy === me ? "You paid" : `${name(e.paidBy)} paid`}</span>
+                      </span>
+                      <span className="sums">
+                        <span className="money">{fmt(e.amountPence)}</span>
+                        <span className={`small ${net > 0 ? "pos" : net < 0 ? "neg" : "muted"}`}>
+                          {net > 0 ? `you lent ${fmt(net)}` : net < 0 ? `you owe ${fmt(-net)}` : "not involved"}
+                        </span>
+                      </span>
+                    </button>
+                    {open && (
+                      <div className="expense-detail">
+                        <p className="small muted">Split between {parts.length}</p>
+                        <ul>
+                          {parts.map((x) => (
+                            <li key={x.memberId}>
+                              <span>{name(x.memberId)}</span>
+                              <span className="money">{fmt(x.pence)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <button
+                          className={`link small ${pendingDelete === e.id ? "danger" : "quiet"}`}
+                          aria-label={pendingDelete === e.id ? `Confirm delete ${e.description}` : `Delete ${e.description}`}
+                          onClick={async () => {
+                            // Two taps instead of window.confirm, which is blocked in some web views.
+                            if (pendingDelete !== e.id) return setPendingDelete(e.id);
+                            setPendingDelete(null);
+                            setOpenId(null);
+                            await store.deleteExpense(group.reference, e.id);
+                            reload();
+                          }}
+                        >
+                          {pendingDelete === e.id ? "Tap again to delete" : "Delete expense"}
+                        </button>
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -579,7 +645,7 @@ function GroupHome({ group, me, tab, reload }: { group: Group; me: string; tab: 
         </section>
       )}
 
-      <button className="fab" onClick={() => go(`/g/${group.reference}/add`)}>
+      <button className="fab" hidden={tab === "expenses" && group.expenses.length === 0} onClick={() => go(`/g/${group.reference}/add`)}>
         Add expense
       </button>
     </div>
