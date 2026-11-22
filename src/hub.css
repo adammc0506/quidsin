@@ -98,5 +98,7 @@ a.item:hover .open { background: #3a2366; }
 .doc-nav { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 22px; padding-top: 16px; border-top: 2px dashed var(--rule); font-size: 0.92rem; font-weight: 620; }
 .open.santa { background: #12392b; }
 .open.whip { background: #9b1b52; }
+.open.tally { background: #1b2733; }
+a.item:hover .open.tally { background: #121b24; }
 a.item:hover .open.whip { background: #6f1239; }
 a.item:hover .open.santa { background: #0c2a1f; }

@@ -45,7 +45,7 @@ jobs:
       - name: Apply database migrations
         if: env.CLOUDFLARE_API_TOKEN != ''
         run: |
-          for db in quidsin santa whip; do
+          for db in quidsin santa whip tally; do
             if ! npx wrangler d1 migrations apply "$db" --remote > mig.log 2>&1; then
               echo "::error title=D1 migrations failed ($db)::$(tail -c 1500 mig.log | tr '\n' ' ')"; exit 1
             fi

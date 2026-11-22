@@ -9,5 +9,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["index.ts", "retention.ts", "http.ts", "draw.ts", "santa.ts", "whip.ts", "guard.ts"]
+  "include": ["index.ts", "retention.ts", "http.ts", "draw.ts", "santa.ts", "whip.ts", "tally.ts", "guard.ts"]
 }

@@ -37,3 +37,11 @@ database_name = "whip"
 # Created 22 Nov 2026 (Western Europe).
 database_id = "f305ccaf-a13c-4606-80fb-8a89ea0f190e"
 migrations_dir = "migrations-whip"
+
+# Tally (score keeper) has its own database too.
+[[d1_databases]]
+binding = "TALLY"
+database_name = "tally"
+# Created 22 Nov 2026 (Western Europe).
+database_id = "2cc10f09-448e-4634-bd69-5a1d23773497"
+migrations_dir = "migrations-tally"
