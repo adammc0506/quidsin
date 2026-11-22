@@ -2,6 +2,9 @@
 name = "quidsin"
 main = "worker/index.ts"
 compatibility_date = "2026-11-01"
+# Keep the workers.dev address on: the Android app talks to it, and it is the fallback for the custom domain.
+workers_dev = true
+preview_urls = false
 
 # Daily clean-up of expired groups (03:17 UTC).
 [triggers]
