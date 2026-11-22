@@ -1,0 +1,21 @@
+# Tab & Tally
+
+> Free tools for groups at tabandtally.co.uk: split bills, Secret Santa, whip-rounds, scoreboards, killer pool, sweepstakes, quiz scoring and league tables. Each tool uses one shareable code, needs no sign-up, never holds or moves money, and is paid for by adverts. Groups are deleted automatically after 30 days, or 3 months if the organiser chooses.
+
+## Tools
+
+- [QuidsIn](https://tabandtally.co.uk/quidsin/): bill splitter that shows who owes whom and the fewest payments to settle up.
+- [Secret Santa](https://tabandtally.co.uk/santa/): online name draw. Everyone sees only their own match; the organiser sees none. Optional wishlists.
+- [Whip-round](https://tabandtally.co.uk/whipround/): collect for a gift or leaving do and track who has paid. Never handles the money.
+- [Tally](https://tabandtally.co.uk/tally/): live shared scoreboard for game nights, pool, darts and quizzes.
+- [Killer Pool](https://tabandtally.co.uk/killerpool/): tracker for pub killer and own-ball killer with lives, re-rack payer and final shot options.
+- [Pickers](https://tabandtally.co.uk/pickers/): random name picker, fair team splitter, order shuffle, coin flip and dice. Runs in the browser; nothing is saved.
+- [Sweepstake](https://tabandtally.co.uk/sweepstake/): fair random draw of teams, horses or numbers to people, for the World Cup, Grand National or office games.
+- [Quiz night](https://tabandtally.co.uk/quiz/): round-by-round quiz scoring with a live leaderboard.
+- [League](https://tabandtally.co.uk/league/): league table that works itself out from entered results, with optional generated fixtures.
+
+## About
+
+- [About](https://tabandtally.co.uk/about/): who runs Tab & Tally (Line Rate IT, United Kingdom) and what to know before using it.
+- [Privacy](https://tabandtally.co.uk/privacy/): what is stored for each tool and for how long.
+- [Contact](https://tabandtally.co.uk/contact/): hello@tabandtally.co.uk
