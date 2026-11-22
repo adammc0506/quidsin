@@ -33,20 +33,22 @@ jobs:
           npx vitest run
           npx tsc -p worker/tsconfig.json
 
-      - name: Create or find the D1 database
+      - name: Check Cloudflare access
         if: env.CLOUDFLARE_API_TOKEN != ''
         run: |
-          id=$(npx wrangler d1 list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0));const d=l.find(x=>x.name==="quidsin");process.stdout.write(d?d.uuid:"")')
-          if [ -z "$id" ]; then
-            npx wrangler d1 create quidsin --location weur
-            id=$(npx wrangler d1 list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0));process.stdout.write(l.find(x=>x.name==="quidsin").uuid)')
+          # Failures are reported as annotations so they show without opening the log.
+          if ! npx wrangler whoami > who.log 2>&1; then
+            echo "::error title=Cloudflare login failed::$(tail -c 1500 who.log | tr '\n' ' ')"; exit 1
           fi
-          sed -i "s/^database_id = .*/database_id = \"$id\"/" wrangler.toml
-          echo "D1 database: $id"
+          grep -iE "account|d1|workers" who.log | head -20 || true
 
       - name: Apply database migrations
         if: env.CLOUDFLARE_API_TOKEN != ''
-        run: npx wrangler d1 migrations apply quidsin --remote
+        run: |
+          if ! npx wrangler d1 migrations apply quidsin --remote > mig.log 2>&1; then
+            echo "::error title=D1 migrations failed::$(tail -c 1500 mig.log | tr '\n' ' ')"; exit 1
+          fi
+          cat mig.log
 
       - name: Deploy website and API
         id: deploy
@@ -55,7 +57,11 @@ jobs:
           VITE_API_URL: /
         run: |
           npm run build
-          npx wrangler deploy | tee deploy.log
+          if ! npx wrangler deploy > deploy.log 2>&1; then
+            echo "::error title=Deploy failed::$(tail -c 1500 deploy.log | tr '\n' ' ')"; exit 1
+          fi
+          cat deploy.log
+          echo "::notice title=Deployed::$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)"
           url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "### QuidsIn is live at $url" >> "$GITHUB_STEP_SUMMARY"
