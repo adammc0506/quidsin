@@ -5,8 +5,9 @@
 import { HttpError, body, cleanText, cors, json, newReference, now, refPattern, uid } from "./http";
 import { expiryFor, extend, isExpired, parseRetention } from "./retention";
 import { handleSanta, purgeSanta, type SantaEnv } from "./santa";
+import { handleWhip, purgeWhip, type WhipEnv } from "./whip";
 
-interface Env extends SantaEnv {
+interface Env extends SantaEnv, WhipEnv {
   DB: D1Database;
 }
 
@@ -289,6 +290,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     try {
       if (path[1] === "santa") return await handleSanta(req, env, path.slice(2));
+      if (path[1] === "whip") return await handleWhip(req, env, path.slice(2));
       return await handleApi(req, env, path);
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message }, e.status);
@@ -299,5 +301,6 @@ export default {
   async scheduled(_controller, env, ctx): Promise<void> {
     ctx.waitUntil(purgeExpired(env).then((n) => console.log(`Purged ${n} expired QuidsIn group(s)`)));
     ctx.waitUntil(purgeSanta(env).then((n) => console.log(`Purged ${n} expired Secret Santa draw(s)`)));
+    ctx.waitUntil(purgeWhip(env).then((n) => console.log(`Purged ${n} expired whip-round(s)`)));
   },
 } satisfies ExportedHandler<Env>;

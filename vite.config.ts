@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         hub: resolve(import.meta.dirname, "index.html"),
         quidsin: resolve(import.meta.dirname, "quidsin/index.html"),
+        whipround: resolve(import.meta.dirname, "whipround/index.html"),
         santa: resolve(import.meta.dirname, "santa/index.html"),
         privacy: resolve(import.meta.dirname, "privacy/index.html"),
         about: resolve(import.meta.dirname, "about/index.html"),

@@ -1,4 +1,6 @@
 // Secret Santa client: talks to /api/santa and remembers this device's private keys.
+import { ApiError, callApi, copy, shareOrCopy } from "../lib/client";
+export { ApiError, copy, shareOrCopy };
 
 export type Person = { id: string; name: string; claimed: boolean };
 export type Draw = {
@@ -16,30 +18,9 @@ export type Me = {
   recipient: { name: string; wishlist: string };
 };
 
-const base = (import.meta.env.VITE_API_URL || "/").replace(/\/$/, "");
 
-export class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${base}/api/santa${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    });
-  } catch {
-    throw new ApiError(0, "Can't reach Tab & Tally. Check your connection and try again.");
-  }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, (data as { error?: string }).error ?? "Something went wrong");
-  return data as T;
-}
+const call = <T>(path: string, init?: RequestInit) => callApi<T>("santa", path, init);
 
 const post = <T>(path: string, data: unknown) => call<T>(path, { method: "POST", body: JSON.stringify(data) });
 
@@ -108,36 +89,3 @@ const origin = () => (location.protocol.startsWith("http") ? location.origin : "
 export const groupLink = (ref: string) => `${origin()}/santa/#/d/${ref}`;
 export const privateLink = (token: string) => `${origin()}/santa/#/me/${token}`;
 export const adminLink = (token: string) => `${origin()}/santa/#/admin/${token}`;
-
-/** Share sheet if available, otherwise copy. Returns "shared" | "copied" | "failed". */
-export async function shareOrCopy(title: string, text: string, url: string): Promise<"shared" | "copied" | "failed"> {
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, text, url });
-      return "shared";
-    } catch (e) {
-      if ((e as Error).name === "AbortError") return "failed";
-    }
-  }
-  return copy(`${text} ${url}`);
-}
-
-export async function copy(value: string): Promise<"copied" | "failed"> {
-  try {
-    await navigator.clipboard.writeText(value);
-    return "copied";
-  } catch {
-    const ta = document.createElement("textarea");
-    ta.value = value;
-    document.body.appendChild(ta);
-    ta.select();
-    let ok = false;
-    try {
-      ok = document.execCommand("copy");
-    } catch {
-      /* ignore */
-    }
-    ta.remove();
-    return ok ? "copied" : "failed";
-  }
-}

@@ -29,3 +29,11 @@ database_name = "santa"
 # Created 22 Nov 2026 (Western Europe).
 database_id = "c19c7ffa-70d2-49b9-832a-7dd4bf50d368"
 migrations_dir = "migrations-santa"
+
+# Whip-round has its own database too.
+[[d1_databases]]
+binding = "WHIP"
+database_name = "whip"
+# Created 22 Nov 2026 (Western Europe).
+database_id = "f305ccaf-a13c-4606-80fb-8a89ea0f190e"
+migrations_dir = "migrations-whip"
