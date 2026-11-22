@@ -45,3 +45,11 @@ database_name = "tally"
 # Created 22 Nov 2026 (Western Europe).
 database_id = "2cc10f09-448e-4634-bd69-5a1d23773497"
 migrations_dir = "migrations-tally"
+
+# Killer Pool has its own database too.
+[[d1_databases]]
+binding = "KILLER"
+database_name = "killer"
+# Created 22 Nov 2026 (Western Europe).
+database_id = "043f9b69-6ac6-4ef6-8c71-23f652df7283"
+migrations_dir = "migrations-killer"
