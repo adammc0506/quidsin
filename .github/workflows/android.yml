@@ -40,7 +40,7 @@ jobs:
           if ! npx wrangler whoami > who.log 2>&1; then
             echo "::error title=Cloudflare login failed::$(tail -c 1500 who.log | tr '\n' ' ')"; exit 1
           fi
-          grep -iE "account|d1|workers" who.log | head -20 || true
+          echo "::notice title=Cloudflare access::$(sed 's/\x1b\[[0-9;]*m//g' who.log | grep -iE 'account|d1|workers|scope|permission' | tr '\n' ' ' | tail -c 1500)"
 
       - name: Apply database migrations
         if: env.CLOUDFLARE_API_TOKEN != ''
