@@ -1,0 +1,20 @@
+@import "../lib/base.css";
+/* Pickers — teal, dice and tiles. */
+:root { --slate: #0f6b66; --slate-2: #0a4d49; --page: #eef6f5; --rule: #cfe0de; --chalk-gold: #f4c542; --muted: #4f6664; }
+.result { background: var(--slate); color: #fff; border-radius: 18px; min-height: 150px; display: grid; place-items: center; text-align: center; padding: 20px; overflow-wrap: anywhere; }
+.result .big { font-family: var(--serif); font-size: 2.6rem; line-height: 1.1; }
+.result .hint { opacity: 0.8; }
+.result.rolling .big { opacity: 0.6; }
+.teams { display: grid; gap: 12px; }
+.team { background: var(--paper); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; border-top: 6px solid var(--slate); }
+.team h3 { font-family: var(--serif); font-weight: 400; font-size: 1.1rem; margin: 0 0 6px; }
+.team ul { list-style: none; padding: 0; margin: 0; }
+.order { counter-reset: n; display: flex; flex-direction: column; background: var(--paper); border: 1px solid var(--rule); border-radius: 14px; }
+.order li { counter-increment: n; display: grid; grid-template-columns: 34px 1fr; padding: 10px 14px; }
+.order li + li { border-top: 1px solid var(--rule); }
+.order li::before { content: counter(n); font-family: var(--serif); color: var(--slate); }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.tabs button { min-height: 44px; border-radius: 12px; border: 1.5px solid var(--rule); background: var(--paper); font: inherit; font-weight: 620; font-size: 0.85rem; cursor: pointer; color: var(--ink); padding: 0 4px; }
+.tabs button.on { background: var(--slate); border-color: var(--slate); color: #fff; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.names textarea { min-height: 120px; }
