@@ -4,6 +4,7 @@ import "./killer.css";
 import { StrictMode, useCallback, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { formatPence, parsePounds } from "../lib/money";
+import { QrToggle, FundPromo } from "../lib/Qr";
 import { adminLink, api, copy, gameLink, mine, normaliseRef, shareOrCopy, type Game, type GameEvent, type Player } from "./api";
 
 // ---------- tiny hash router ----------
@@ -278,6 +279,7 @@ function Home() {
         </section>
       )}
 
+      <FundPromo line="Playing for a club or team?" />
       <p className="fine">
         Free, from <a href="/">Tab &amp; Tally</a>. Games are deleted after 30 days, or 3 months if you choose. <a href="/privacy/">Privacy</a>
       </p>
@@ -692,6 +694,7 @@ function Referee({ token, fresh }: { token: string; fresh: boolean }) {
           >
             Share the game
           </button>
+          <QrToggle url={gameLink(g.reference)} />
         </div>
 
         <History g={g} />

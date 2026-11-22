@@ -4,6 +4,7 @@ import "./whip.css";
 import { StrictMode, useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { formatPence, parsePounds } from "../lib/money";
+import { QrToggle, FundPromo } from "../lib/Qr";
 import { adminLink, api, copy, mine, normaliseRef, potLink, shareOrCopy, type Pot } from "./api";
 
 // ---------- tiny hash router ----------
@@ -192,6 +193,7 @@ function Home() {
         </section>
       )}
 
+      <FundPromo line="Collecting for a club or team?" />
       <p className="fine">
         Free, from <a href="/">Tab &amp; Tally</a>. Whip-rounds are deleted after 30 days, or 3 months if you choose.{" "}
         <a href="/privacy/">Privacy</a>
@@ -499,6 +501,7 @@ function Admin({ token, fresh }: { token: string; fresh: boolean }) {
           >
             Share the invite
           </button>
+          <QrToggle url={potLink(pot.reference)} />
         </div>
         {note && <p className="toast" role="status">{note}</p>}
 
@@ -567,6 +570,7 @@ function Admin({ token, fresh }: { token: string; fresh: boolean }) {
           </button>
         </section>
 
+        <FundPromo line="Collecting for a club or team? Run a fundraiser online." />
         <p className="muted small">
           Deletes on {new Date(pot.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.{" "}
           {pot.canExtend && (

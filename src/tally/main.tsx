@@ -3,6 +3,7 @@ import "@fontsource-variable/schibsted-grotesk";
 import "./tally.css";
 import { StrictMode, useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { QrToggle, FundPromo } from "../lib/Qr";
 import { adminLink, api, boardLink, copy, mine, normaliseRef, shareOrCopy, type Board } from "./api";
 
 // ---------- tiny hash router ----------
@@ -201,6 +202,7 @@ function Home() {
         </section>
       )}
 
+      <FundPromo line="Keeping score for a club or league?" />
       <p className="fine">
         Free, from <a href="/">Tab &amp; Tally</a>. Scoreboards are deleted after 30 days, or 3 months if you choose.{" "}
         <a href="/privacy/">Privacy</a>
@@ -443,6 +445,7 @@ function Keeper({ token, fresh }: { token: string; fresh: boolean }) {
           >
             Share the scoreboard
           </button>
+          <QrToggle url={boardLink(b.reference)} />
         </div>
 
         <History b={b} />

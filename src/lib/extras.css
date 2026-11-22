@@ -1,0 +1,7 @@
+.qr-box { background: #fff; color: #222; border-radius: 14px; padding: 12px; width: min(100%, 260px); text-align: center; }
+.qr-box svg { width: 100%; height: auto; display: block; }
+.qr-box p { font-size: 0.8rem; color: #555; margin: 6px 0 0; }
+.qr-wait { display: block; padding: 60px 0; color: #555; }
+.fund-promo { border: 1px dashed currentColor; border-radius: 12px; padding: 12px 14px; font-size: 0.9rem; opacity: 0.9; }
+.fund-promo p { margin: 0; }
+.fund-promo a { font-weight: 640; }

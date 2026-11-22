@@ -4,6 +4,7 @@ import "./santa.css";
 import { StrictMode, useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { formatPence, parsePounds } from "../lib/money";
+import { QrToggle } from "../lib/Qr";
 import {
   adminLink,
   api,
@@ -346,6 +347,7 @@ function Admin({ token, fresh }: { token: string; fresh: boolean }) {
           >
             Share the invite
           </button>
+          <QrToggle url={groupLink(d.reference)} />
           {!me?.token && (
             <a className="btn" href={`#/d/${d.reference}`}>
               Taking part? Pick your name
