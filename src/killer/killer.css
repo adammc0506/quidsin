@@ -179,3 +179,9 @@ fieldset.field legend { font-weight: 620; font-size: 0.92rem; padding: 0; margin
 .stepper output { font-family: var(--serif); font-size: 2rem; min-width: 2ch; text-align: center; }
 .pickrow { display: grid; grid-template-columns: 1fr 116px; gap: 8px; }
 select { font: inherit; color: var(--ink); width: 100%; padding: 0 10px; min-height: 48px; border: 1.5px solid var(--rule); border-radius: 12px; background: var(--paper); }
+
+.pl.turn { box-shadow: 0 0 0 2px var(--chalk-gold); }
+.shot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.shot .btn { min-height: 64px; font-size: 1.05rem; }
+.btn.miss { border-color: #b42840; color: #b42840; }
+.payers { border-color: var(--chalk-gold); background: #fff8e3; }

@@ -2,16 +2,17 @@
 import { callApi, copy, shareOrCopy, ApiError } from "../lib/client";
 export { ApiError, copy, shareOrCopy };
 
-export type Player = { id: string; name: string; lives: number; killer: boolean; ball: number | null };
-export type Rules = { killerRequired: boolean; ownLoses: boolean; scratchLoses: boolean; secretBalls: boolean };
+export type Player = { id: string; name: string; lives: number; killer: boolean; blacks: number; ball: number | null };
+export type Rules = { mode: "balls" | "turns"; blackPays: boolean; killerRequired: boolean; ownLoses: boolean; scratchLoses: boolean; secretBalls: boolean };
 export type GameEvent = {
   id: string;
-  kind: "own" | "pot" | "scratch" | "adjust";
+  kind: "own" | "pot" | "scratch" | "adjust" | "hit" | "miss" | "black" | "skip";
   shooterId: string | null;
   victimId: string | null;
   livesPlayerId: string | null;
   livesDelta: number | null;
   killerPlayerId: string | null;
+  blackPlayerId: string | null;
 };
 export type Game = {
   reference: string;
@@ -20,11 +21,14 @@ export type Game = {
   rules: Rules;
   expiresAt: string;
   winnerId: string | null;
+  turnId: string | null;
   players: Player[];
   recent: GameEvent[];
   canExtend?: boolean;
 };
 export type Setup = {
+  mode: "balls" | "turns";
+  blackPays: boolean;
   name: string;
   players: { name: string; ball?: number }[];
   lives: number;
@@ -35,7 +39,8 @@ export type Setup = {
   retentionDays: 30 | 90;
 };
 export type Act =
-  | { type: "own" | "scratch"; shooterId: string }
+  | { type: "own" | "scratch" | "hit" | "miss" | "black" | "skip"; shooterId: string }
+  | { type: "rerack" }
   | { type: "pot"; shooterId: string; victimId: string }
   | { type: "adjust"; playerId: string; delta: 1 | -1 };
 

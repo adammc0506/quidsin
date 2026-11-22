@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignBalls, decide, winner, type P, type Rules } from "./killerrules";
+import { assignBalls, decide, nextTurn, winner, type P, type Rules } from "./killerrules";
 
 const rules: Rules = { killerRequired: true, ownLoses: true, scratchLoses: true };
 const mk = (): P[] => [
@@ -68,5 +68,33 @@ describe("assignBalls", () => {
   });
   it("rejects clashing choices", () => {
     expect(assignBalls(2, [4, 4], rand)).toBeNull();
+  });
+});
+
+describe("pub killer (turns)", () => {
+  const pub: Rules = { mode: "turns", killerRequired: false, ownLoses: false, scratchLoses: false, blackPays: true };
+  it("a miss costs a life, a hit does not", () => {
+    expect(decide(pub, mk(), { type: "miss", shooterId: "a" })).toMatchObject({ livesPlayerId: "a", livesDelta: -1 });
+    const hit = decide(pub, mk(), { type: "hit", shooterId: "a" });
+    expect(hit).toMatchObject({ kind: "hit" });
+    expect(hit).not.toHaveProperty("livesDelta");
+  });
+  it("potting the black marks the player to cover the re-rack", () => {
+    expect(decide(pub, mk(), { type: "black", shooterId: "b" })).toMatchObject({ kind: "black", blackPlayerId: "b" });
+    expect(decide({ ...pub, blackPays: false }, mk(), { type: "black", shooterId: "b" })).toHaveProperty("error");
+  });
+  it("keeps the two kinds of game apart", () => {
+    expect(decide(rules, mk(), { type: "miss", shooterId: "a" })).toHaveProperty("error");
+    expect(decide(pub, mk(), { type: "own", shooterId: "a" })).toHaveProperty("error");
+  });
+  it("turn order goes round and skips people who are out", () => {
+    const ps = mk();
+    expect(nextTurn(ps, null)).toBe("a");
+    expect(nextTurn(ps, "a")).toBe("b");
+    expect(nextTurn(ps, "c")).toBe("a");
+    ps[1].lives = 0;
+    expect(nextTurn(ps, "a")).toBe("c");
+    ps[2].lives = 0;
+    expect(nextTurn(ps, "a")).toBeNull();
   });
 });

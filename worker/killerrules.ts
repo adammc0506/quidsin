@@ -1,17 +1,18 @@
 // Killer pool rules, kept apart from the database so they can be tested.
 
-export type Rules = { killerRequired: boolean; ownLoses: boolean; scratchLoses: boolean };
-export type P = { id: string; name: string; lives: number; killer: boolean };
+export type Rules = { mode?: "balls" | "turns"; killerRequired: boolean; ownLoses: boolean; scratchLoses: boolean; blackPays?: boolean };
+export type P = { id: string; name: string; lives: number; killer: boolean; blacks?: number };
 export type Action =
   | { type: "own"; shooterId: string }
   | { type: "pot"; shooterId: string; victimId: string }
   | { type: "scratch"; shooterId: string }
-  | { type: "adjust"; playerId: string; delta: 1 | -1 };
+  | { type: "adjust"; playerId: string; delta: 1 | -1 }
+  | { type: "hit" | "miss" | "black" | "skip"; shooterId: string };
 
 /** What an action changes. `error` means nothing should change. */
 export type Outcome =
   | { error: string }
-  | { kind: Action["type"]; shooterId?: string; victimId?: string; livesPlayerId?: string; livesDelta?: number; killerPlayerId?: string };
+  | { kind: Action["type"]; shooterId?: string; victimId?: string; livesPlayerId?: string; livesDelta?: number; killerPlayerId?: string; blackPlayerId?: string };
 
 export const alive = (ps: P[]) => ps.filter((p) => p.lives > 0);
 export const winner = (ps: P[]) => (ps.length >= 2 && alive(ps).length === 1 ? alive(ps)[0] : null);
@@ -29,6 +30,15 @@ export function decide(rules: Rules, ps: P[], a: Action): Outcome {
   if (!s) return { error: "That player isn't in this game" };
   if (winner(ps)) return { error: "The game is over. Start a new game from the setup section." };
   if (s.lives <= 0) return { error: `${s.name} is already out` };
+  const turns = rules.mode === "turns";
+  if (a.type === "hit" || a.type === "miss" || a.type === "black" || a.type === "skip") {
+    if (!turns) return { error: "That action is for pub killer games" };
+    if (a.type === "hit" || a.type === "skip") return { kind: a.type, shooterId: s.id };
+    if (a.type === "miss") return { kind: "miss", shooterId: s.id, livesPlayerId: s.id, livesDelta: -1 };
+    if (!rules.blackPays) return { error: "The black isn't special in this game" };
+    return { kind: "black", shooterId: s.id, blackPlayerId: s.id };
+  }
+  if (turns) return { error: "That action is for own-ball killer games" };
 
   if (a.type === "own") {
     if (!s.killer) return { kind: "own", shooterId: s.id, killerPlayerId: s.id };
@@ -63,4 +73,15 @@ export function assignBalls(count: number, chosen: (number | null)[], rand: (n: 
   const out: number[] = [];
   for (let i = 0; i < count; i++) out.push(chosen[i] ?? free.pop()!);
   return out;
+}
+
+/** Whose shot is next: the next player still in after whoever shot last, going round in order. */
+export function nextTurn(ps: P[], lastShooterId: string | null): string | null {
+  if (winner(ps) || alive(ps).length === 0) return null;
+  const from = lastShooterId ? ps.findIndex((p) => p.id === lastShooterId) : -1;
+  for (let k = 1; k <= ps.length; k++) {
+    const p = ps[(from + k + ps.length) % ps.length];
+    if (p.lives > 0) return p.id;
+  }
+  return null;
 }

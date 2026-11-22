@@ -86,10 +86,25 @@ function Pips({ lives, start }: { lives: number; start: number }) {
   );
 }
 
-function status(p: Player, rules: Game["rules"]) {
+function status(p: Player, g: Game) {
+  const rules = g.rules;
   if (p.lives <= 0) return "Out";
+  if (rules.mode === "turns") {
+    const bits = [];
+    if (g.turnId === p.id) bits.push("Up next");
+    if (p.blacks > 0) bits.push("Covers the re-rack");
+    return bits.join(" · ");
+  }
   if (!rules.killerRequired) return "";
   return p.killer ? "Killer" : "Not a killer yet";
+}
+
+function Num({ n }: { n: number }) {
+  return (
+    <span className="ball hidden" aria-label={`Number ${n}`}>
+      <i>{n}</i>
+    </span>
+  );
 }
 
 function Table({ g, keeper, openId, onPick }: { g: Game; keeper?: boolean; openId?: string | null; onPick?: (id: string) => void }) {
@@ -104,7 +119,7 @@ function Table({ g, keeper, openId, onPick }: { g: Game; keeper?: boolean; openI
       </div>
       {win && (
         <div className="winner" role="status">
-          <Ball n={win.ball} small />
+          {g.rules.mode === "balls" && <Ball n={win.ball} small />}
           {win.name} wins
         </div>
       )}
@@ -112,16 +127,16 @@ function Table({ g, keeper, openId, onPick }: { g: Game; keeper?: boolean; openI
         {g.players.map((p) => {
           const inner = (
             <>
-              <Ball n={p.ball} />
+              {g.rules.mode === "turns" ? <Num n={g.players.indexOf(p) + 1} /> : <Ball n={p.ball} />}
               <span className="pname">
                 {p.name}
-                {status(p, g.rules) && <small>{status(p, g.rules)}</small>}
+                {status(p, g) && <small>{status(p, g)}</small>}
               </span>
               <Pips lives={p.lives} start={g.startLives} />
             </>
           );
           return (
-            <li key={p.id} className={`pl${p.lives <= 0 ? " out" : ""}${openId === p.id ? " open" : ""}`}>
+            <li key={p.id} className={`pl${p.lives <= 0 ? " out" : ""}${openId === p.id ? " open" : ""}${g.turnId === p.id ? " turn" : ""}`}>
               {keeper && !win ? (
                 <button className="plbtn" onClick={() => onPick?.(p.id)} aria-expanded={openId === p.id}>
                   {inner}
@@ -146,6 +161,14 @@ function describe(e: GameEvent, g: Game): string {
       return `${n(e.shooterId)} potted ${n(e.victimId)}'s ball`;
     case "scratch":
       return `${n(e.shooterId)} scratched and lost a life`;
+    case "hit":
+      return `${n(e.shooterId)} potted a ball and stays safe`;
+    case "miss":
+      return `${n(e.shooterId)} missed and lost a life`;
+    case "black":
+      return `${n(e.shooterId)} potted the black and covers the next re-rack`;
+    case "skip":
+      return `${n(e.shooterId)}'s turn was skipped`;
     default:
       return `${n(e.livesPlayerId)} ${e.livesDelta && e.livesDelta > 0 ? "was given a life" : "lost a life"}`;
   }
@@ -184,7 +207,7 @@ function Home() {
       <section className="hero">
         <h1>Killer pool, without the scribbled lives</h1>
         <p className="lede">
-          Set the lives and house rules, give everyone a ball, and track who's still in. Everyone follows along live on their own phone.
+          Pub killer for up to 20 players, or own-ball killer with numbered balls. Set the lives and house rules, and track who's still in. Everyone follows live on their own phone.
         </p>
         <button className="btn primary big" onClick={() => go("/new")}>
           Set up a game
@@ -217,11 +240,11 @@ function Home() {
         <ol className="steps">
           <li>
             <strong>Set up the game</strong>
-            <span>Lives, house rules and ball numbers. Random or your choice.</span>
+            <span>Pick pub killer or own-ball killer, then the lives and house rules.</span>
           </li>
           <li>
             <strong>Referee taps what happens</strong>
-            <span>Who potted what. Lives and killers update by themselves.</span>
+            <span>Potted or missed. Lives and who's up next update by themselves.</span>
           </li>
           <li>
             <strong>Last player standing wins</strong>
@@ -270,13 +293,15 @@ function Toggle({ on, set, title, hint }: { on: boolean; set: (v: boolean) => vo
 }
 
 function NewGame() {
+  const [mode, setMode] = useState<"turns" | "balls">("turns");
+  const [blackPays, setBlackPays] = useState(true);
   const [name, setName] = useState("");
   const [rows, setRows] = useState<Row[]>([
     { name: "", ball: "" },
     { name: "", ball: "" },
     { name: "", ball: "" },
   ]);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(2);
   const [killerRequired, setKillerRequired] = useState(true);
   const [ownLoses, setOwnLoses] = useState(true);
   const [scratchLoses, setScratchLoses] = useState(true);
@@ -285,8 +310,23 @@ function NewGame() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const named = rows.filter((r) => r.name.trim());
+  const pub = mode === "turns";
+  const maxPlayers = pub ? 20 : 15;
+  const pickMode = (m: "turns" | "balls") => {
+    if (m === mode) return;
+    setMode(m);
+    setLives(m === "turns" ? 2 : 3);
+  };
   const taken = new Set(rows.map((r) => r.ball).filter(Boolean));
 
+  const pasteNames = (i: number, text: string): boolean => {
+    const names = text.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
+    if (names.length < 2) return false;
+    const next = rows.slice(0, i);
+    names.slice(0, maxPlayers - i).forEach((n) => next.push({ name: n, ball: "" }));
+    setRows([...next, ...rows.slice(i + names.length)].slice(0, maxPlayers));
+    return true;
+  };
   const setRow = (i: number, patch: Partial<Row>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
   const submit = async (e: FormEvent) => {
@@ -294,13 +334,16 @@ function NewGame() {
     setErr("");
     if (!name.trim()) return setErr("Give the game a name.");
     if (named.length < 2) return setErr("Add at least 2 players.");
+    if (named.length > maxPlayers) return setErr(`This type of game holds up to ${maxPlayers} players.`);
     if (new Set(named.map((r) => r.name.trim().toLowerCase())).size !== named.length)
       return setErr("Two players have the same name. Add an initial to tell them apart.");
     setBusy(true);
     try {
       const r = await api.create({
+        mode,
+        blackPays,
         name: name.trim(),
-        players: named.map((x) => ({ name: x.name.trim(), ball: x.ball ? Number(x.ball) : undefined })),
+        players: named.map((x) => ({ name: x.name.trim(), ball: !pub && x.ball ? Number(x.ball) : undefined })),
         lives,
         killerRequired,
         ownLoses,
@@ -320,16 +363,35 @@ function NewGame() {
     <Shell back="/">
       <form className="stack" onSubmit={submit}>
         <h1 className="plain">Set up a game</h1>
+        <fieldset className="field">
+          <legend>Type of game</legend>
+          <div className="seg">
+            <label className={pub ? "on" : ""}>
+              <input type="radio" name="mode" checked={pub} onChange={() => pickMode("turns")} />
+              Pub killer
+            </label>
+            <label className={!pub ? "on" : ""}>
+              <input type="radio" name="mode" checked={!pub} onChange={() => pickMode("balls")} />
+              Own-ball killer
+            </label>
+          </div>
+          <small className="muted">
+            {pub
+              ? "Take turns in order, up to 20 players. Pot any ball to stay safe, miss and lose a life."
+              : "Everyone has a numbered ball, up to 15 players. Pot your own to become a killer, then pot theirs to take lives."}
+          </small>
+        </fieldset>
         <label className="field">
           <span>Name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday killer" maxLength={60} />
         </label>
 
         <fieldset className="field">
-          <legend>Players and balls</legend>
+          <legend>{pub ? "Players, in playing order" : "Players and balls"}</legend>
           {rows.map((r, i) => (
-            <div className="pickrow" key={i}>
-              <input value={r.name} aria-label={`Player ${i + 1}`} placeholder={`Player ${i + 1}`} maxLength={40} onChange={(e) => setRow(i, { name: e.target.value })} />
+            <div className={pub ? undefined : "pickrow"} key={i}>
+              <input value={r.name} aria-label={`Player ${i + 1}`} placeholder={`Player ${i + 1}`} maxLength={40} onChange={(e) => setRow(i, { name: e.target.value })} onPaste={(e) => { if (pasteNames(i, e.clipboardData.getData("text"))) e.preventDefault(); }} />
+              {!pub && (
               <select value={r.ball} aria-label={`Ball for player ${i + 1}`} onChange={(e) => setRow(i, { ball: e.target.value })}>
                 <option value="">Random</option>
                 {Array.from({ length: 15 }, (_, k) => k + 1).map((n) => (
@@ -338,12 +400,14 @@ function NewGame() {
                   </option>
                 ))}
               </select>
+              )}
             </div>
           ))}
-          <button type="button" className="link" onClick={() => setRows([...rows, { name: "", ball: "" }])} disabled={rows.length >= 15}>
+          <button type="button" className="link" onClick={() => setRows([...rows, { name: "", ball: "" }])} disabled={rows.length >= maxPlayers}>
             Add another player
           </button>
-          <small className="muted">Leave a ball on Random and we'll deal it out.</small>
+          {!pub && <small className="muted">Leave a ball on Random and we'll deal it out.</small>}
+          <small className="muted">Tip: paste a list of names, one per line, into the first box.</small>
         </fieldset>
 
         <fieldset className="field">
@@ -361,6 +425,15 @@ function NewGame() {
 
         <fieldset className="field">
           <legend>House rules</legend>
+          {pub ? (
+            <Toggle
+              on={blackPays}
+              set={setBlackPays}
+              title="Black covers the next re-rack"
+              hint={blackPays ? "Whoever pots the black, at any point, pays for the next re-rack. It doesn't cost a life." : "Off: the black is just another ball."}
+            />
+          ) : (
+            <>
           <Toggle
             on={killerRequired}
             set={setKillerRequired}
@@ -385,6 +458,8 @@ function NewGame() {
             title="Keep ball numbers secret"
             hint={secretBalls ? "Watchers see who's who only once a player is out. The referee always sees them." : "Off: everyone can see every ball number."}
           />
+            </>
+          )}
         </fieldset>
 
         <Toggle on={long} set={setLong} title="Keep for 3 months" hint={`Deleted after ${long ? "3 months" : "30 days"}, with everything in it.`} />
@@ -457,7 +532,9 @@ function Referee({ token, fresh }: { token: string; fresh: boolean }) {
       flash((x as Error).message);
     }
   };
+  const pub = g.rules.mode === "turns";
   const open = g.players.find((p) => p.id === openId);
+  const shooter = pub ? (open ?? g.players.find((p) => p.id === g.turnId)) : open;
   const others = open ? g.players.filter((p) => p.id !== open.id) : [];
 
   return (
@@ -465,7 +542,48 @@ function Referee({ token, fresh }: { token: string; fresh: boolean }) {
       <div className="stack">
         <Table g={g} keeper openId={openId} onPick={(id) => setOpenId(openId === id ? null : id)} />
 
-        {open && !g.winnerId && (
+        {pub && shooter && !g.winnerId && (
+          <section className="card add" aria-label={`${shooter.name}'s shot`}>
+            <h2 className="h2">{shooter.id === g.turnId ? `${shooter.name}'s shot` : `${shooter.name} (out of turn)`}</h2>
+            <div className="shot">
+              <button className="btn primary" onClick={() => run(() => api.act(token, { type: "hit", shooterId: shooter.id }), true)}>
+                Potted a ball
+              </button>
+              <button className="btn miss" onClick={() => run(() => api.act(token, { type: "miss", shooterId: shooter.id }), true)}>
+                Missed, lose a life
+              </button>
+            </div>
+            <div className="actions">
+              {g.rules.blackPays && (
+                <button className="btn" onClick={() => run(() => api.act(token, { type: "black", shooterId: shooter.id }), true)}>
+                  Potted the black
+                </button>
+              )}
+              <button className="btn" onClick={() => run(() => api.act(token, { type: "skip", shooterId: shooter.id }), true)}>
+                Skip turn
+              </button>
+            </div>
+            <p className="sub-h">Fix lives by hand</p>
+            <div className="actions">
+              <button className="btn" onClick={() => run(() => api.act(token, { type: "adjust", playerId: shooter.id, delta: -1 }))}>
+                Take a life
+              </button>
+              <button className="btn" onClick={() => run(() => api.act(token, { type: "adjust", playerId: shooter.id, delta: 1 }))}>
+                Give a life
+              </button>
+            </div>
+          </section>
+        )}
+        {pub && g.rules.blackPays && g.players.some((p) => p.blacks > 0) && (
+          <section className="card payers">
+            <h2 className="h2">Covers the next re-rack</h2>
+            <p>{g.players.filter((p) => p.blacks > 0).map((p) => p.name).join(", ")}</p>
+            <button className="btn" onClick={() => run(() => api.act(token, { type: "rerack" }))}>
+              Re-rack paid
+            </button>
+          </section>
+        )}
+        {!pub && open && !g.winnerId && (
           <section className="card add" aria-label={`What did ${open.name} do?`}>
             <h2 className="h2">{open.name}</h2>
             <p className="sub-h">Potted someone's ball</p>
@@ -499,7 +617,9 @@ function Referee({ token, fresh }: { token: string; fresh: boolean }) {
             </div>
           </section>
         )}
-        {!open && !g.winnerId && <p className="muted small">Tap the player who took the shot.</p>}
+        {!g.winnerId && (
+          <p className="muted small">{pub ? "The highlighted player is up next. Tap someone else if they shoot out of turn." : "Tap the player who took the shot."}</p>
+        )}
         {note && <p className="toast" role="status">{note}</p>}
 
         {g.recent.length > 0 && (
@@ -546,9 +666,9 @@ function Referee({ token, fresh }: { token: string; fresh: boolean }) {
                 run(() => api.restart(token, false), true);
               }}
             >
-              {confirm === "again" ? "Tap again to restart" : "Same balls"}
+              {confirm === "again" ? "Tap again to restart" : pub ? "Start again" : "Same balls"}
             </button>
-            <button
+            {!pub && <button
               className="btn"
               onClick={() => {
                 if (confirm !== "reshuffle") return setConfirm("reshuffle");
@@ -557,7 +677,7 @@ function Referee({ token, fresh }: { token: string; fresh: boolean }) {
               }}
             >
               {confirm === "reshuffle" ? "Tap again to reshuffle" : "Deal new balls"}
-            </button>
+            </button>}
           </div>
         </section>
 
