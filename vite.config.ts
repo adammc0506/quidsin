@@ -22,6 +22,16 @@ export default defineConfig({
         santa: resolve(import.meta.dirname, "santa/index.html"),
         privacy: resolve(import.meta.dirname, "privacy/index.html"),
         about: resolve(import.meta.dirname, "about/index.html"),
+        // guides:start
+        "secret-santa-generator": resolve(import.meta.dirname, "secret-santa-generator/index.html"),
+        "sweepstake-generator": resolve(import.meta.dirname, "sweepstake-generator/index.html"),
+        "pub-quiz-scorer": resolve(import.meta.dirname, "pub-quiz-scorer/index.html"),
+        "killer-pool-rules": resolve(import.meta.dirname, "killer-pool-rules/index.html"),
+        "league-table-maker": resolve(import.meta.dirname, "league-table-maker/index.html"),
+        "split-bills-with-friends": resolve(import.meta.dirname, "split-bills-with-friends/index.html"),
+        "whip-round-for-a-gift": resolve(import.meta.dirname, "whip-round-for-a-gift/index.html"),
+        "random-team-generator": resolve(import.meta.dirname, "random-team-generator/index.html"),
+        // guides:end
         contact: resolve(import.meta.dirname, "contact/index.html"),
       },
     },

@@ -126,14 +126,19 @@ def set_head(text, block, title=None, desc=None):
         text = re.sub(r'<meta\s+name="description"\s+content="[^"]*"\s*/>', f'<meta name="description" content="{esc(desc)}" />', text, flags=re.S)
     return text.replace("</head>", block + "\n  </head>", 1)
 
+GUIDE = {"santa":("secret-santa-generator","Secret Santa generator guide"),"sweepstake":("sweepstake-generator","Sweepstake generator guide"),
+ "quiz":("pub-quiz-scorer","Pub quiz scorer guide"),"killerpool":("killer-pool-rules","Killer pool rules"),"league":("league-table-maker","League table maker guide"),
+ "quidsin":("split-bills-with-friends","How to split bills with friends"),"whipround":("whip-round-for-a-gift","How to run a whip-round"),
+ "pickers":("random-team-generator","Random team generator guide")}
+
 def pre(t):
     slug, name, title, desc, h1, intro, steps, faqs, cat = t
     li = "".join(f"<li>{esc(s)}</li>" for s in steps)
     fq = "".join(f"<h3>{esc(q)}</h3><p>{esc(a)}</p>" for q, a in faqs)
     return (f'<!-- seo-pre:start --><div class="seo-pre" style="max-width:640px;margin:0 auto;padding:24px 18px;font-family:system-ui,sans-serif;line-height:1.5">'
             f'<p><a href="/">Tab &amp; Tally</a> › {esc(name)}</p><h1>{esc(h1)}</h1><p>{esc(intro)}</p>'
-            f'<h2>How it works</h2><ol>{li}</ol><h2>Questions</h2>{fq}'
-            f'<p><a href="/about/">About</a> · <a href="/privacy/">Privacy</a> · <a href="/contact/">Contact</a></p></div><!-- seo-pre:end -->')
+            f'<h2>How it works</h2><ol>{li}</ol><h2>Questions</h2>{fq}' +
+            (f'<p><a href="/{GUIDE[slug][0]}/">{GUIDE[slug][1]}</a></p>' if slug in GUIDE else "")+f'<p><a href="/about/">About</a> · <a href="/privacy/">Privacy</a> · <a href="/contact/">Contact</a></p></div><!-- seo-pre:end -->')
 
 def jsonld_tool(t):
     slug, name, title, desc, h1, intro, steps, faqs, cat = t

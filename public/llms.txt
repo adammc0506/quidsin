@@ -14,6 +14,17 @@
 - [Quiz night](https://tabandtally.co.uk/quiz/): round-by-round quiz scoring with a live leaderboard.
 - [League](https://tabandtally.co.uk/league/): league table that works itself out from entered results, with optional generated fixtures.
 
+## Guides
+
+- [Secret Santa generator with no sign-up](https://tabandtally.co.uk/secret-santa-generator/): Run a Secret Santa online for free. How it works, what budget to set, and how to keep matches secret, even from the organiser. No sign-up or emails.
+- [Sweepstake generator for tournaments, races and the office](https://tabandtally.co.uk/sweepstake-generator/): Free sweepstake generator. Draw teams, horses or numbers to people fairly, share the result, and track who is still in. Ideas for the World Cup, Euros, Grand National and the office.
+- [Pub quiz scorer with a live leaderboard](https://tabandtally.co.uk/pub-quiz-scorer/): Free pub quiz scorer. Enter team scores after each round and share a live leaderboard. Half points, extra rounds and late teams all supported. No sign-up.
+- [Killer pool rules: pub killer and own-ball killer](https://tabandtally.co.uk/killer-pool-rules/): How to play killer pool. Rules for pub killer and own-ball killer, lives, becoming a killer, who pays for the re-rack, the final shot, and a free tracker.
+- [League table maker with fixtures](https://tabandtally.co.uk/league-table-maker/): Free league table maker. Add the teams, generate fixtures, enter results and the table works itself out. For pool, darts, quizzes and five-a-side leagues.
+- [How to split bills with friends and flatmates](https://tabandtally.co.uk/split-bills-with-friends/): How to split shared expenses without arguments. Keep a running list, see who owes whom, and settle up with the fewest payments. Free, no sign-up.
+- [How to run a whip-round for a gift or leaving do](https://tabandtally.co.uk/whip-round-for-a-gift/): How to run a whip-round for a leaving gift, wedding present or group card. Set a target, share one link and see who has chipped in. We never hold your money.
+- [Random team generator and name picker](https://tabandtally.co.uk/random-team-generator/): Free random team generator. Split a list of names into fair teams, pick a name from a hat, shuffle an order or flip a coin. Runs on your phone, saves nothing.
+
 ## About
 
 - [About](https://tabandtally.co.uk/about/): who runs Tab & Tally (Line Rate IT, United Kingdom) and what to know before using it.
