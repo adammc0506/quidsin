@@ -66,10 +66,24 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "### QuidsIn is live at $url" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Connect tabandtally.co.uk
+        id: domain
+        if: env.CLOUDFLARE_API_TOKEN != '' && steps.deploy.outcome == 'success'
+        run: |
+          # Never fails the build: the workers.dev address keeps working if this can't attach.
+          if npx wrangler deploy --domain tabandtally.co.uk --domain www.tabandtally.co.uk > domain.log 2>&1; then
+            cat domain.log
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Custom domain::tabandtally.co.uk and www are attached"
+            echo "### Live at https://tabandtally.co.uk" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning title=Custom domain not attached::$(sed 's/\x1b\[[0-9;]*m//g' domain.log | tail -c 1500 | tr '\n' ' ')"
+          fi
+
       - name: Build web app for Android
         env:
           VITE_API_URL: ${{ steps.deploy.outputs.url }}
-          VITE_PUBLIC_URL: ${{ steps.deploy.outputs.url && format('{0}/quidsin', steps.deploy.outputs.url) || '' }}
+          VITE_PUBLIC_URL: ${{ steps.domain.outputs.ok == 'true' && 'https://tabandtally.co.uk/quidsin' || (steps.deploy.outputs.url && format('{0}/quidsin', steps.deploy.outputs.url) || '') }}
         run: npm run build:app
 
       - name: Build APK
