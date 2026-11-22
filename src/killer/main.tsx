@@ -3,6 +3,7 @@ import "@fontsource-variable/schibsted-grotesk";
 import "./killer.css";
 import { StrictMode, useCallback, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { formatPence, parsePounds } from "../lib/money";
 import { adminLink, api, copy, gameLink, mine, normaliseRef, shareOrCopy, type Game, type GameEvent, type Player } from "./api";
 
 // ---------- tiny hash router ----------
@@ -93,7 +94,7 @@ function status(p: Player, g: Game) {
     const bits = [];
     if (g.finalistId === p.id) bits.push("Final shot");
     else if (g.turnId === p.id) bits.push("Up next");
-    if (p.blacks > 0) bits.push("Covers the re-rack");
+    if (p.blacks > 0) bits.push(g.rerackPence ? `Covers the re-rack, ${formatPence(g.rerackPence)}` : "Covers the re-rack");
     return bits.join(" · ");
   }
   if (!rules.killerRequired) return "";
@@ -304,6 +305,7 @@ function NewGame() {
   const [mode, setMode] = useState<"turns" | "balls">("turns");
   const [blackPays, setBlackPays] = useState(true);
   const [finalShot, setFinalShot] = useState(true);
+  const [rerack, setRerack] = useState("");
   const [name, setName] = useState("");
   const [rows, setRows] = useState<Row[]>([
     { name: "", ball: "" },
@@ -346,10 +348,17 @@ function NewGame() {
     if (named.length > maxPlayers) return setErr(`This type of game holds up to ${maxPlayers} players.`);
     if (new Set(named.map((r) => r.name.trim().toLowerCase())).size !== named.length)
       return setErr("Two players have the same name. Add an initial to tell them apart.");
+    let rerackPence: number | undefined;
+    if (pub && blackPays && rerack.trim()) {
+      const v = parsePounds(rerack);
+      if (!v) return setErr("The re-rack cost should be an amount, like 1.50.");
+      rerackPence = v;
+    }
     setBusy(true);
     try {
       const r = await api.create({
         mode,
+        rerackPence,
         blackPays,
         finalShot,
         name: name.trim(),
@@ -447,8 +456,18 @@ function NewGame() {
               on={blackPays}
               set={setBlackPays}
               title="Black covers the next re-rack"
-              hint={blackPays ? "Whoever pots the black, at any point, pays for the next re-rack. It doesn't cost a life." : "Off: the black is just another ball."}
+              hint={blackPays ? "Whoever pots the black, at any point, covers the cost of the table releasing the balls again. It doesn't cost a life." : "Off: the black is just another ball."}
             />
+            {blackPays && (
+              <label className="field">
+                <span>Cost of a re-rack (optional)</span>
+                <div className="prefix">
+                  <span aria-hidden="true">£</span>
+                  <input value={rerack} onChange={(e) => setRerack(e.target.value)} inputMode="decimal" placeholder="1.50" />
+                </div>
+                <small className="muted">Shown next to whoever potted the black. Nothing is collected here.</small>
+              </label>
+            )}
             </>
           ) : (
             <>
@@ -597,7 +616,10 @@ function Referee({ token, fresh }: { token: string; fresh: boolean }) {
         {pub && g.rules.blackPays && g.players.some((p) => p.blacks > 0) && (
           <section className="card payers">
             <h2 className="h2">Covers the next re-rack</h2>
-            <p>{g.players.filter((p) => p.blacks > 0).map((p) => p.name).join(", ")}</p>
+            <p>
+              {g.players.filter((p) => p.blacks > 0).map((p) => p.name).join(", ")}
+              {g.rerackPence ? `, ${formatPence(g.rerackPence)}` : ""}
+            </p>
             <button className="btn" onClick={() => run(() => api.act(token, { type: "rerack" }))}>
               Re-rack paid
             </button>

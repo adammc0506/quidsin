@@ -22,6 +22,7 @@ export type Game = {
   expiresAt: string;
   winnerId: string | null;
   finalistId: string | null;
+  rerackPence: number | null;
   turnId: string | null;
   players: Player[];
   recent: GameEvent[];
@@ -31,6 +32,7 @@ export type Setup = {
   mode: "balls" | "turns";
   blackPays: boolean;
   finalShot: boolean;
+  rerackPence?: number;
   name: string;
   players: { name: string; ball?: number }[];
   lives: number;
