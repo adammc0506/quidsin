@@ -50,7 +50,7 @@ GUIDES = [
   ("Money and prizes",
    ["Tab & Tally tracks the draw only. You collect the stakes and pay the prize however you like. If you are collecting for a prize pot, a <a href=\"/whipround/\">whip-round</a> can track who has paid."])],
  [("Is the sweepstake draw fair?","Yes. Both the items and the people are shuffled and the items dealt evenly."),
-  ("How many teams or people can I add?","Up to 64 of each."),
+  ("How many teams or people can I add?","Up to 500 of each, so a big office or a 100-horse draw is fine."),
   ("Can I use it for the Grand National?","Yes. Add the horses one per line and the people who are playing."),
   ("Can people see the draw?","Yes, everyone with the code can see who has which item. Only the organiser can mark items out or as winners."),
   ("Is it free?","Yes, with no sign-up.")],

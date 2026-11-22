@@ -11,7 +11,19 @@ export interface SweepEnv {
 
 const REF_RE = refPattern("SW");
 const TOKEN_RE = /^[0-9a-z]{32}$/;
-const MAX = 64;
+const MAX = 500;
+
+/** D1 allows 100 bound values per statement, so rows go in groups of up to 20. */
+function inserts(db: D1Database, table: string, cols: string, rows: unknown[][]) {
+  const per = Math.floor(100 / cols.split(",").length);
+  const one = `(${cols.split(",").map(() => "?").join(", ")})`;
+  const out: D1PreparedStatement[] = [];
+  for (let i = 0; i < rows.length; i += per) {
+    const part = rows.slice(i, i + per);
+    out.push(db.prepare(`INSERT INTO ${table} (${cols}) VALUES ${part.map(() => one).join(", ")}`).bind(...part.flat()));
+  }
+  return out;
+}
 const STATUSES = ["in", "out", "won"];
 
 type SweepRow = { id: string; reference: string; name: string; about: string; created_at: string; expires_at: string; extended: number };
@@ -69,8 +81,8 @@ async function create(env: SweepEnv, req: Request) {
     try {
       await env.SWEEP.batch([
         env.SWEEP.prepare("INSERT INTO sweeps (id, reference, name, about, admin_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, reference, name, about, adminHash, created, expires),
-        ...entrants.map((n, i) => env.SWEEP.prepare("INSERT INTO entrants (id, sweep_id, name, position) VALUES (?, ?, ?, ?)").bind(eIds[i], id, n, i)),
-        ...items.map((label, i) => env.SWEEP.prepare("INSERT INTO items (id, sweep_id, label, position, entrant_id) VALUES (?, ?, ?, ?, ?)").bind(uid(), id, label, i, eIds[owner[i]])),
+        ...inserts(env.SWEEP, "entrants", "id, sweep_id, name, position", entrants.map((n, i) => [eIds[i], id, n, i])),
+        ...inserts(env.SWEEP, "items", "id, sweep_id, label, position, entrant_id", items.map((label, i) => [uid(), id, label, i, eIds[owner[i]]])),
       ]);
       return json({ reference, adminToken }, 201);
     } catch (e) {

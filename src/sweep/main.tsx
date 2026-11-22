@@ -53,7 +53,7 @@ function NewSweep() {
     if (!name.trim()) return setErr("Give the sweepstake a name.");
     if (it.length < 2) return setErr("Add at least two things to draw, one per line.");
     if (pe.length < 2) return setErr("Add at least two people, one per line.");
-    if (it.length > 64 || pe.length > 64) return setErr("That's more than 64. Split it into two sweepstakes.");
+    if (it.length > 500 || pe.length > 500) return setErr("That's more than 500. Split it into two sweepstakes.");
     setBusy(true);
     try {
       const r = await api.create({ name: name.trim(), about: about.trim(), items: it, entrants: pe, retentionDays: long ? 90 : 30 });
