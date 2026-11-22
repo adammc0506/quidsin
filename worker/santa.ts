@@ -31,10 +31,11 @@ type DrawRow = {
   created_at: string;
   expires_at: string;
   extended: number;
+  wishlists: number;
 };
 type PersonRow = { id: string; name: string; claimed: number };
 
-const DRAW_COLS = "id, reference, name, budget_pence, exchange_date, created_at, expires_at, extended";
+const DRAW_COLS = "id, reference, name, budget_pence, exchange_date, created_at, expires_at, extended, wishlists";
 
 function live(d: DrawRow | null, missing = "Draw not found"): DrawRow {
   if (!d) throw new HttpError(404, missing);
@@ -60,6 +61,7 @@ async function publicView(env: SantaEnv, d: DrawRow) {
     budgetPence: d.budget_pence,
     exchangeDate: d.exchange_date,
     expiresAt: d.expires_at,
+    wishlists: d.wishlists === 1,
     people: (await people(env, d.id)).map((p) => ({ id: p.id, name: p.name, claimed: p.claimed === 1 })),
   };
 }
@@ -88,6 +90,8 @@ async function createDraw(env: SantaEnv, req: Request) {
       throw new HttpError(400, "Exchange date must be a date");
     date = b.exchangeDate;
   }
+  if (b.wishlists !== undefined && typeof b.wishlists !== "boolean") throw new HttpError(400, "wishlists must be true or false");
+  const wishlists = b.wishlists === false ? 0 : 1;
   const retention = parseRetention(b.retentionDays);
   if (!retention) throw new HttpError(400, "Draws can be kept for 30 or 90 days");
 
@@ -104,8 +108,8 @@ async function createDraw(env: SantaEnv, req: Request) {
     try {
       await env.SANTA.batch([
         env.SANTA.prepare(
-          "INSERT INTO draws (id, reference, name, budget_pence, exchange_date, admin_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        ).bind(did, reference, name, budget, date, adminHash, created, expires),
+          "INSERT INTO draws (id, reference, name, budget_pence, exchange_date, admin_hash, created_at, expires_at, wishlists) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ).bind(did, reference, name, budget, date, adminHash, created, expires, wishlists),
         ...members.map((m, i) =>
           env.SANTA.prepare(
             "INSERT INTO participants (id, draw_id, name, position, gives_to) VALUES (?, ?, ?, ?, ?)",
@@ -166,12 +170,13 @@ async function getMe(env: SantaEnv, token: string) {
   return json({
     draw: await publicView(env, d),
     me: { id: p.id, name: p.name, wishlist: p.wishlist },
-    recipient: { name: to?.name ?? "", wishlist: to?.wishlist ?? "" },
+    recipient: { name: to?.name ?? "", wishlist: d.wishlists === 1 ? (to?.wishlist ?? "") : "" },
   });
 }
 
 async function setWishlist(env: SantaEnv, token: string, req: Request) {
-  const { p } = await personByToken(env, token);
+  const { p, d } = await personByToken(env, token);
+  if (d.wishlists !== 1) throw new HttpError(403, "Wishlists are switched off for this draw");
   const b = await body(req);
   if (typeof b.wishlist !== "string") throw new HttpError(400, "Wishlist must be text");
   const w = b.wishlist.replace(/\r\n/g, "\n").trim();

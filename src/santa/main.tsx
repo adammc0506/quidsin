@@ -179,6 +179,7 @@ function NewDraw() {
   const [budget, setBudget] = useState("");
   const [date, setDate] = useState("");
   const [long, setLong] = useState(false);
+  const [wishlists, setWishlists] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const clean = people.map((p) => p.trim()).filter(Boolean);
@@ -203,6 +204,7 @@ function NewDraw() {
         members: clean,
         budgetPence,
         exchangeDate: date || undefined,
+        wishlists,
         retentionDays: long ? 90 : 30,
       });
       mine.save({ ref: r.reference, name: name.trim(), admin: r.adminToken });
@@ -253,6 +255,17 @@ function NewDraw() {
           </label>
         </div>
 
+        <label className="check">
+          <input type="checkbox" checked={wishlists} onChange={(e) => setWishlists(e.target.checked)} />
+          <span>
+            <strong>Let people add a wishlist</strong>
+            <small className="muted">
+              {wishlists
+                ? "Each person can jot down gift ideas. Only their Secret Santa sees them."
+                : "Off: nobody can add a wishlist in this draw."}
+            </small>
+          </span>
+        </label>
         <label className="check">
           <input type="checkbox" checked={long} onChange={(e) => setLong(e.target.checked)} />
           <span>
@@ -573,7 +586,7 @@ function MePage({ token, fresh }: { token: string; fresh: boolean }) {
 
         <Details d={d} />
 
-        {open && (
+        {open && d.wishlists && (
           <section className="card">
             <h2 className="h2">{recipient.name}'s wishlist</h2>
             {recipient.wishlist ? (
@@ -584,6 +597,7 @@ function MePage({ token, fresh }: { token: string; fresh: boolean }) {
           </section>
         )}
 
+        {d.wishlists && (
         <section className="card">
           <h2 className="h2">Your wishlist</h2>
           <p className="muted small">Only your Secret Santa sees this. Sizes, likes, things to avoid.</p>
@@ -601,6 +615,7 @@ function MePage({ token, fresh }: { token: string; fresh: boolean }) {
             {saving === "saving" ? "Saving…" : saving === "saved" ? "Wishlist saved" : "Save wishlist"}
           </button>
         </section>
+        )}
 
         <section className="card quiet-card">
           <h2 className="h2">Open this on another phone</h2>
