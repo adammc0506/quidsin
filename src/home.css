@@ -1,0 +1,107 @@
+/* Tab & Tally homepage — warm cream, white cards, one accent colour per tool.
+   Scoped to body.home so About, Privacy, Contact and the guides keep their own look. */
+:root:has(body.home) { background: #faf6ee; }
+body.home {
+  --cream: #faf6ee;
+  --espresso: #2a1e17;
+  --soft: #5b4a3f;
+  --edge: #e9dfcb;
+  --tint: #fbf4e4;
+  --amber: #e8a317;
+  background: var(--cream);
+  color: var(--espresso);
+}
+body.home :focus-visible { outline: 3px solid #5a3296; outline-offset: 3px; border-radius: 12px; }
+
+body.home .page { display: block; padding: calc(env(safe-area-inset-top) + 20px) 16px 64px; }
+body.home .receipt { max-width: 1120px; margin: 0 auto; padding: 0; background: none; filter: none; animation: none; }
+body.home .receipt::after { content: none; }
+
+/* ---------- header ---------- */
+body.home .masthead { position: relative; border: 0; padding: 28px 0 28px; gap: 10px; overflow: hidden; }
+body.home .confetti { position: absolute; top: -6px; right: -8px; width: clamp(150px, 34vw, 280px); height: auto; pointer-events: none; opacity: 0.9; }
+body.home .tally { color: var(--espresso); width: 68px; height: 42px; margin-bottom: 4px; position: relative; }
+body.home h1 { font-size: clamp(2.5rem, 7vw, 3.6rem); letter-spacing: -0.015em; color: var(--espresso); position: relative; }
+body.home .lede { color: var(--soft); font-size: 1.06rem; line-height: 1.6; max-width: 34ch; position: relative; }
+
+/* ---------- cards ---------- */
+body.home .items { display: grid; grid-template-columns: 1fr; gap: 20px; padding: 6px 0 8px; }
+body.home .items li + li { border: 0; }
+@media (min-width: 720px) {
+  body.home .items { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  body.home .items li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (min-width: 1040px) {
+  body.home .items { grid-template-columns: repeat(3, 1fr); }
+  body.home .items li:last-child:nth-child(odd) { grid-column: auto; }
+}
+
+body.home .items li { container-type: inline-size; }
+body.home a.item {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 84px;
+  grid-template-areas: "name price" "what art" "open open";
+  align-items: start;
+  column-gap: 12px;
+  row-gap: 10px;
+  padding: 22px 20px 20px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(42, 30, 23, 0.06), 0 14px 28px -12px rgba(42, 30, 23, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+body.home a.item:hover, body.home a.item:active { background: #fff; transform: translateY(-3px); box-shadow: 0 2px 4px rgba(42, 30, 23, 0.08), 0 20px 34px -12px rgba(42, 30, 23, 0.28); }
+body.home a.item .name { grid-area: name; font-size: 1.5rem; line-height: 1.15; text-decoration: none; color: var(--espresso); }
+body.home .price {
+  grid-area: price; justify-self: end; align-self: start;
+  padding: 3px 11px; border: 1.5px solid var(--edge); border-radius: 999px; background: var(--tint);
+  font-weight: 700; font-size: 0.88rem; color: var(--espresso); white-space: nowrap;
+}
+body.home .what { grid-area: what; color: var(--soft); font-size: 0.96rem; line-height: 1.55; max-width: none; }
+body.home .art { grid-area: art; justify-self: end; align-self: end; width: 84px; height: auto; }
+body.home .open {
+  grid-area: open; justify-self: start; align-self: end; margin: 4px 0 0;
+  display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 22px;
+  border-radius: 999px; font-size: 1rem; font-weight: 680; color: #fff; background: #5a3296;
+  transition: background 0.15s, transform 0.15s;
+}
+body.home .open::after { content: "→" / ""; transition: transform 0.15s; }
+body.home a.item:hover .open::after { transform: translateX(3px); }
+body.home a.item:active .open { transform: scale(0.97); }
+/* Tool colours */
+body.home .open { background: #5a3296; }
+body.home a.item:hover .open { background: #46267a; }
+body.home .open.santa { background: #125038; }
+body.home a.item:hover .open.santa { background: #0c3a29; }
+body.home .open.whip { background: #b51b58; }
+body.home a.item:hover .open.whip { background: #8d1445; }
+body.home .open.score { background: #b04a12; }
+body.home a.item:hover .open.score { background: #8a390c; }
+body.home .open.killer { background: #0e4d8a; }
+body.home .open.pickers { background: #0f6b66; }
+body.home .open.sweep { background: #14532d; }
+body.home .open.quiz { background: #4a2a7a; }
+body.home .open.league { background: #0f3d5e; }
+
+/* Wide enough card: button bottom-left, illustration bottom-right, text above both. */
+@container (min-width: 340px) {
+  body.home a.item { grid-template-areas: "name price" "what what" "open art"; }
+  body.home .art { width: 100px; margin-top: -8px; margin-right: -4px; }
+}
+
+/* ---------- My stuff and footer ---------- */
+body.home .mine { margin-top: 28px; padding: 20px 20px 8px; border: 0; background: #fff; border-radius: 20px; box-shadow: 0 1px 2px rgba(42, 30, 23, 0.06), 0 14px 28px -12px rgba(42, 30, 23, 0.18); max-width: 640px; }
+body.home .mine li + li { border-top: 1px solid var(--edge); }
+body.home .mine .tool.keeper { color: #125038; }
+body.home .total { border: 0; margin-top: 32px; padding: 0; max-width: 640px; }
+body.home .sum { padding: 12px 18px; background: var(--tint); border: 1.5px solid var(--edge); border-radius: 16px; }
+body.home .fine { color: var(--soft); }
+body.home .receipt-nav { padding-top: 8px; }
+body.home .receipt-nav a { text-decoration-color: var(--amber); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.home a.item, body.home .open, body.home .open::after { transition: none; }
+  body.home a.item:hover { transform: none; }
+}
